@@ -1,67 +1,20 @@
 import { useState, useRef } from 'react';
-import { C, TEMPLATES, TONES, TONE_HINTS, PLATFORMS, AUDIENCES, NUMBER_OF_IDEAS_OPTIONS } from '../constants/theme';
-import { Badge, Tag, Spinner } from '../components/Primitives';
-import { BtnPrimary, BtnGhost } from '../components/Buttons';
-import { TemplateBtn } from '../components/TemplateBtn';
-import SectionBlock from '../components/SectionBlock';
-import Modal from '../components/Modal';
-import Icon from '../components/Icon';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Loader2, Copy, RefreshCw, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { TEMPLATES, TONES, TONE_HINTS, PLATFORMS, AUDIENCES, NUMBER_OF_IDEAS_OPTIONS } from '../constants/theme';
 
-// ── Shared select style ────────────────────────────────────────────────────
-function makeSelect(base) {
-  return {
-    ...base,
-    cursor: "pointer",
-    appearance: "none",
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M6 8L0 0h12z'/%3E%3C/svg%3E")`,
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "right 12px center",
-  };
-}
-
-// ── Field label ───────────────────────────────────────────────────────────
 function FieldLabel({ children }) {
   return (
-    <span style={{
-      fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
-      textTransform: "uppercase", color: C.gray600,
-      marginBottom: 8, display: "block",
-    }}>
+    <span className="text-[10px] font-bold tracking-widest uppercase text-textMuted/80 mb-2 block">
       {children}
     </span>
   );
 }
 
-// ── Platform chip ─────────────────────────────────────────────────────────
-function PlatformChip({ label, active, onClick }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        fontSize: 12, padding: "5px 13px", borderRadius: 20, cursor: "pointer",
-        border: active ? `1.5px solid ${C.green}` : `1px solid ${hov ? C.green + "66" : C.gray200}`,
-        background: active ? C.greenLight : hov ? "#f5fbf8" : C.white,
-        color: active ? C.greenDark : hov ? C.green : C.gray600,
-        fontWeight: active ? 600 : 400,
-        fontFamily: "'DM Sans', sans-serif",
-        transition: "all 0.14s cubic-bezier(0.34,1.56,0.64,1)",
-        boxShadow: active ? `0 2px 8px ${C.green}22` : "none",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-// ── Main component ────────────────────────────────────────────────────────
 export default function GeneratePage({
   history, setHistory, setTab, showToast,
   initialPrompt = "", initialTemplate = "Blog", initialTone = "Professional",
 }) {
-  // Fields
   const [topic, setTopic] = useState(initialPrompt);
   const [template, setTemplate] = useState(initialTemplate);
   const [tone, setTone] = useState(initialTone);
@@ -69,46 +22,34 @@ export default function GeneratePage({
   const [audience, setAudience] = useState("General Public");
   const [numberOfIdeas, setNumberOfIdeas] = useState(1);
 
-  // UI state
   const [loading, setLoading] = useState(false);
   const [outputs, setOutputs] = useState([]);
   const [validErr, setValidErr] = useState(false);
-  const [scorePcts, setScorePcts] = useState({});
-  const [modalItem, setModalItem] = useState(null);
   const outputRef = useRef(null);
 
-  // ── Generate ─────────────────────────────────────────────────────────────
   async function generate(overrides = {}) {
-    const p        = overrides.topic          ?? topic;
-    const tmpl     = overrides.template       ?? template;
-    const tn       = overrides.tone           ?? tone;
-    const plt      = overrides.platform       ?? platform;
-    const aud      = overrides.audience       ?? audience;
-    const numIdeas = overrides.numberOfIdeas  ?? numberOfIdeas;
+    const p = overrides.topic ?? topic;
+    const tmpl = overrides.template ?? template;
+    const tn = overrides.tone ?? tone;
+    const plt = overrides.platform ?? platform;
+    const aud = overrides.audience ?? audience;
+    const numIdeas = overrides.numberOfIdeas ?? numberOfIdeas;
 
     if (!p.trim()) { setValidErr(true); return; }
-    setValidErr(false); setLoading(true); setScorePcts({}); setOutputs([]);
+    setValidErr(false); setLoading(true); setOutputs([]);
 
     try {
       const res = await fetch("http://localhost:8083/api/content/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: p,
-          template: tmpl,
-          tone: tn,
-          platform: plt,
-          audience: aud,
-          numberOfIdeas: numIdeas
+          topic: p, template: tmpl, tone: tn, platform: plt, audience: aud, numberOfIdeas: numIdeas
         }),
       });
       
-      if (!res.ok) {
-        throw new Error("Failed to generate content");
-      }
+      if (!res.ok) throw new Error("Failed to generate content");
       
       const parsed = await res.json();
-
       const entries = parsed.map((idea, idx) => ({
         ...idea,
         ts: idea.ts ? new Date(idea.ts) : new Date(),
@@ -116,11 +57,8 @@ export default function GeneratePage({
       }));
 
       setOutputs(entries);
-      setHistory(h => [...[...entries].reverse(), ...h]);
+      setHistory(h => [...entries.reverse(), ...h]);
 
-      entries.forEach((e, idx) => {
-        setTimeout(() => setScorePcts(prev => ({ ...prev, [idx]: e.qualityScore })), 200 + idx * 120);
-      });
       setTimeout(() => outputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch (err) {
       console.error(err);
@@ -134,233 +72,243 @@ export default function GeneratePage({
     navigator.clipboard.writeText(txt).then(() => showToast("Copied to clipboard"));
   }
 
-  // ── Styles ────────────────────────────────────────────────────────────────
-  const inputStyle = {
-    width: "100%", fontSize: 14, color: C.black, background: C.gray50,
-    border: `1px solid ${C.gray200}`, borderRadius: 8, padding: "10px 14px",
-    transition: "border-color 0.15s, box-shadow 0.15s",
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
-  const card = {
-    background: C.white, border: `1px solid ${C.gray100}`,
-    borderRadius: 12, padding: "20px 22px",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div>
-      <Modal item={modalItem} onClose={() => setModalItem(null)} />
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full max-w-4xl mx-auto pb-20">
+      <motion.div variants={itemVariants} className="mb-8">
+        <div className="w-8 h-1 bg-gradient-to-r from-primaryAccent to-tertiaryAccent rounded-full mb-4" />
+        <h1 className="text-3xl font-display font-bold text-white mb-2">AI Generator</h1>
+        <p className="text-textMuted">Configure your parameters and let our models do the heavy lifting.</p>
+      </motion.div>
 
-      {/* Page header */}
-      <div className="fade-up" style={{ marginBottom: 24 }}>
-        <div style={{ height: 3, width: 32, background: `linear-gradient(90deg, ${C.green}, ${C.teal})`, borderRadius: 2, marginBottom: 14 }} />
-        <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", fontFamily: "'DM Serif Display', serif", color: C.black, marginBottom: 4 }}>
-          AI Content Generator
-        </h1>
-        <p style={{ fontSize: 14, color: C.gray600 }}>
-          Fill in your topic, platform, audience and tone — then let AI do the rest.
-        </p>
-      </div>
+      <div className="space-y-6">
+        {/* Topic */}
+        <motion.div variants={itemVariants} className="glass-panel p-6 rounded-2xl border border-white/5 relative group">
+          <div className="absolute inset-0 bg-primaryAccent/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl pointer-events-none" />
+          <FieldLabel>Topic / Prompt</FieldLabel>
+          <textarea
+            value={topic}
+            onChange={e => { setTopic(e.target.value); setValidErr(false); }}
+            placeholder="e.g. 'The future of artificial intelligence in software development...'"
+            className="w-full bg-darkBg border border-darkBorder rounded-xl p-4 text-white placeholder:text-textMuted/40 focus:outline-none focus:border-primaryAccent focus:ring-1 focus:ring-primaryAccent transition-all min-h-[120px] resize-y"
+          />
+          <div className="flex justify-between mt-2 px-1">
+            <AnimatePresence>
+              {validErr && (
+                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-red-400 text-xs font-semibold">
+                  Please enter a topic to generate content.
+                </motion.span>
+              )}
+            </AnimatePresence>
+            <span className="text-textMuted/50 text-xs ml-auto">{topic.length} chars</span>
+          </div>
+        </motion.div>
 
-      {/* ── 1. Topic ── */}
-      <div className="fade-up-1" style={{ ...card, marginBottom: 14 }}>
-        <FieldLabel>Topic / Prompt</FieldLabel>
-        <textarea
-          value={topic}
-          onChange={e => { setTopic(e.target.value); setValidErr(false); }}
-          placeholder="e.g. 'Benefits of morning exercise for busy professionals'"
-          style={{ ...inputStyle, minHeight: 100, resize: "vertical", lineHeight: 1.65, display: "block" }}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-          {validErr
-            ? <span style={{ fontSize: 12, color: C.red }}>Please enter a topic before generating.</span>
-            : <span />}
-          <span style={{ fontSize: 12, color: C.gray400 }}>{topic.length} chars</span>
-        </div>
-      </div>
-
-      {/* ── 2. Template ── */}
-      <div className="fade-up-1" style={{ ...card, marginBottom: 14 }}>
-        <FieldLabel>Template</FieldLabel>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-          {TEMPLATES.map(t => (
-            <TemplateBtn key={t.id} t={t} active={template === t.id} onClick={() => setTemplate(t.id)} />
-          ))}
-        </div>
-      </div>
-
-      {/* ── 3. Tone + Platform ── */}
-      <div className="fade-up-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-        <div style={card}>
-          <FieldLabel>Tone of Voice</FieldLabel>
-          <select value={tone} onChange={e => setTone(e.target.value)} style={makeSelect(inputStyle)}>
-            {TONES.map(t => <option key={t}>{t}</option>)}
-          </select>
-          <div style={{ fontSize: 12, color: C.gray400, marginTop: 8 }}>{TONE_HINTS[tone]}</div>
-        </div>
-
-        <div style={card}>
-          <FieldLabel>Platform</FieldLabel>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {PLATFORMS.map(plt => (
-              <PlatformChip
-                key={plt.id}
-                label={plt.label}
-                active={platform === plt.id}
-                onClick={() => setPlatform(plt.id)}
-              />
+        {/* Template */}
+        <motion.div variants={itemVariants} className="glass-panel p-6 rounded-2xl border border-white/5">
+          <FieldLabel>Template</FieldLabel>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {TEMPLATES.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTemplate(t.id)}
+                className={`flex flex-col items-start p-4 rounded-xl border transition-all duration-200 text-left ${
+                  template === t.id
+                    ? 'bg-primaryAccent/10 border-primaryAccent/50 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
+                    : 'bg-darkBg border-darkBorder hover:border-white/20 hover:bg-white/5'
+                }`}
+              >
+                <div className={`font-semibold mb-1 ${template === t.id ? 'text-primaryAccent' : 'text-white'}`}>
+                  {t.label}
+                </div>
+                <div className="text-[10px] text-textMuted leading-snug">{t.hint}</div>
+              </button>
             ))}
           </div>
-        </div>
-      </div>
+        </motion.div>
 
-      {/* ── 4. Audience + Number of Ideas ── */}
-      <div className="fade-up-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-        <div style={card}>
-          <FieldLabel>Target Audience</FieldLabel>
-          <select value={audience} onChange={e => setAudience(e.target.value)} style={makeSelect(inputStyle)}>
-            {AUDIENCES.map(a => <option key={a}>{a}</option>)}
-          </select>
-          <div style={{ fontSize: 12, color: C.gray400, marginTop: 8 }}>
-            Content will be tailored specifically for this audience.
-          </div>
-        </div>
-
-        <div style={card}>
-          <FieldLabel>Number of Ideas</FieldLabel>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {NUMBER_OF_IDEAS_OPTIONS.map(n => {
-              const active = numberOfIdeas === n;
-              return (
-                <button
-                  key={n}
-                  onClick={() => setNumberOfIdeas(n)}
-                  style={{
-                    width: 44, height: 44, borderRadius: 10, cursor: "pointer",
-                    border: active ? `2px solid ${C.green}` : `1px solid ${C.gray200}`,
-                    background: active ? C.greenLight : C.white,
-                    color: active ? C.greenDark : C.gray600,
-                    fontWeight: active ? 700 : 500, fontSize: 15,
-                    fontFamily: "'DM Sans', sans-serif",
-                    boxShadow: active ? `0 2px 8px ${C.green}22` : "none",
-                    transition: "all 0.15s cubic-bezier(0.34,1.56,0.64,1)",
-                  }}
-                >
-                  {n}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 12, color: C.gray400, marginTop: 10 }}>
-            {numberOfIdeas === 1
-              ? "Generate a single focused piece."
-              : `Generate ${numberOfIdeas} distinct content ideas at once.`}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Generate button ── */}
-      <div className="fade-up-3" style={{ marginBottom: 28 }}>
-        <BtnPrimary
-          style={{ width: "100%", padding: "14px", fontSize: 15, borderRadius: 10, opacity: loading ? 0.8 : 1 }}
-          onClick={() => generate()}
-          disabled={loading}
-        >
-          {loading ? <Spinner /> : <Icon name="sparkle" size={16} color="#fff" />}
-          {loading
-            ? "Generating your content…"
-            : numberOfIdeas > 1
-              ? `Generate ${numberOfIdeas} Ideas`
-              : "Generate Content"}
-        </BtnPrimary>
-      </div>
-
-      {/* ── Outputs ── */}
-      {outputs.length > 0 && (
-        <div ref={outputRef}>
-          {/* Summary badges */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-            <Badge>{outputs[0].template}</Badge>
-            <Badge color={C.gray600} bg={C.gray100}>{outputs[0].tone}</Badge>
-            <Badge color="#0077b5" bg="#e8f4fd">{outputs[0].platform}</Badge>
-            <Badge color="#7c3aed" bg="#ede9fe">{outputs[0].audience}</Badge>
-            {numberOfIdeas > 1 && (
-              <Badge color={C.amber} bg={C.amberLight}>{outputs.length} ideas</Badge>
-            )}
+        {/* Configurations grid */}
+        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="glass-panel p-6 rounded-2xl border border-white/5">
+            <FieldLabel>Tone of Voice</FieldLabel>
+            <div className="relative">
+              <select
+                value={tone}
+                onChange={e => setTone(e.target.value)}
+                className="w-full bg-darkBg border border-darkBorder rounded-xl p-3.5 pr-10 text-white appearance-none focus:outline-none focus:border-primaryAccent focus:ring-1 focus:ring-primaryAccent transition-all cursor-pointer"
+              >
+                {TONES.map(t => <option key={t}>{t}</option>)}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none" />
+            </div>
+            <div className="text-xs text-textMuted mt-3 pl-1 border-l-2 border-primaryAccent/30">{TONE_HINTS[tone]}</div>
           </div>
 
-          {outputs.map((output, idx) => (
-            <div
-              key={output.id}
-              className="scale-in"
-              style={{
-                background: C.white, border: `1px solid ${C.gray100}`,
-                borderRadius: 14, overflow: "hidden",
-                boxShadow: "0 8px 28px rgba(26,138,92,0.08)",
-                marginBottom: idx < outputs.length - 1 ? 18 : 0,
-              }}
-            >
-              {/* Card header */}
-              <div style={{ borderBottom: `1px solid ${C.gray100}`, padding: "16px 22px", background: `linear-gradient(135deg, ${C.greenLight} 0%, #fff 100%)` }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                  <div>
-                    {numberOfIdeas > 1 && (
-                      <div style={{ fontSize: 11, fontWeight: 700, color: C.green, letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 4 }}>
-                        Idea {idx + 1} of {outputs.length}
-                      </div>
-                    )}
-                    <div style={{ fontSize: 19, fontWeight: 700, color: C.black, fontFamily: "'DM Serif Display', serif", letterSpacing: "-0.3px" }}>
-                      {output.title}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <BtnGhost onClick={() => generate()} small>
-                      <Icon name="reload" size={13} color={C.gray600} /> Regenerate
-                    </BtnGhost>
-                    <BtnGhost onClick={() => copyOutput(output)}>
-                      <Icon name="copy" size={13} color={C.gray600} /> Copy
-                    </BtnGhost>
-                  </div>
+          <div className="glass-panel p-6 rounded-2xl border border-white/5">
+            <FieldLabel>Target Audience</FieldLabel>
+            <div className="relative">
+              <select
+                value={audience}
+                onChange={e => setAudience(e.target.value)}
+                className="w-full bg-darkBg border border-darkBorder rounded-xl p-3.5 pr-10 text-white appearance-none focus:outline-none focus:border-primaryAccent focus:ring-1 focus:ring-primaryAccent transition-all cursor-pointer"
+              >
+                {AUDIENCES.map(a => <option key={a}>{a}</option>)}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="glass-panel p-6 rounded-2xl border border-white/5 md:col-span-2">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex-1">
+                <FieldLabel>Platform</FieldLabel>
+                <div className="flex flex-wrap gap-2">
+                  {PLATFORMS.map(plt => (
+                    <button
+                      key={plt.id}
+                      onClick={() => setPlatform(plt.id)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-all duration-200 border ${
+                        platform === plt.id 
+                          ? 'bg-secondaryAccent/20 border-secondaryAccent/50 text-secondaryAccent font-semibold' 
+                          : 'bg-darkBg border-darkBorder text-textMuted hover:text-white hover:border-white/20'
+                      }`}
+                    >
+                      {plt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <SectionBlock label="Introduction" badge="Intro">
-                <p>{output.introduction}</p>
-              </SectionBlock>
-              <SectionBlock label="Key Points" badge={`${output.keyPoints.length} points`}>
-                <ul style={{ paddingLeft: 18 }}>
-                  {output.keyPoints.map((pt, i) => <li key={i} style={{ marginBottom: 7 }}>{pt}</li>)}
-                </ul>
-              </SectionBlock>
-              <SectionBlock label="Conclusion" badge="Wrap-up">
-                <p>{output.conclusion}</p>
-              </SectionBlock>
-              <SectionBlock label="Keywords" badge="SEO">
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {output.keywords.map((k, i) => <Tag key={i}>{k}</Tag>)}
+              <div className="md:w-1/3">
+                <FieldLabel>Output Variations</FieldLabel>
+                <div className="flex bg-darkBg p-1 rounded-xl border border-darkBorder w-full">
+                  {NUMBER_OF_IDEAS_OPTIONS.map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setNumberOfIdeas(n)}
+                      className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${
+                        numberOfIdeas === n 
+                          ? 'bg-primaryAccent/20 text-primaryAccent' 
+                          : 'text-textMuted hover:text-white'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
                 </div>
-              </SectionBlock>
-
-              {/* Quality score */}
-              <div style={{ padding: "14px 22px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ fontSize: 12, color: C.gray600, minWidth: 100 }}>Quality Score</span>
-                <div style={{ flex: 1, height: 7, background: C.gray100, borderRadius: 6, overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%",
-                    width: `${scorePcts[idx] || 0}%`,
-                    background: `linear-gradient(90deg, ${C.green}, ${C.teal})`,
-                    borderRadius: 6,
-                    transition: "width 0.9s cubic-bezier(0.22,1,0.36,1)",
-                  }} />
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.green, minWidth: 50, textAlign: "right" }}>
-                  {Math.round(output.qualityScore)}/100
-                </span>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
+          </div>
+        </motion.div>
+
+        {/* Generate Button Wrapper */}
+        <motion.div variants={itemVariants} className="pt-4">
+          <button
+            onClick={() => generate()}
+            disabled={loading}
+            className="w-full relative overflow-hidden group py-4 rounded-xl bg-gradient-to-r from-primaryAccent via-secondaryAccent to-primaryAccent bg-[length:200%_auto] hover:bg-right text-white font-bold text-lg flex items-center justify-center shadow-lg shadow-primaryAccent/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              {loading ? (
+                <><Loader2 size={20} className="animate-spin" /> Processing with AI Models...</>
+              ) : (
+                <><Sparkles size={20} /> {numberOfIdeas > 1 ? `Generate ${numberOfIdeas} Variations` : "Generate Content"}</>
+              )}
+            </span>
+          </button>
+        </motion.div>
+      </div>
+
+      {/* Outputs Section */}
+      <AnimatePresence>
+        {outputs.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-16"
+            ref={outputRef}
+          >
+            <div className="flex items-center gap-4 mb-6">
+              <h2 className="text-xl font-display font-bold text-white flex-1">Generated Output</h2>
+              <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                <span className="px-2.5 py-1 rounded-md bg-darkSurface border border-darkBorder text-[10px] font-bold text-textMuted uppercase">{outputs[0].template}</span>
+                <span className="px-2.5 py-1 rounded-md bg-darkSurface border border-darkBorder text-[10px] font-bold text-textMuted uppercase">{outputs[0].tone}</span>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {outputs.map((output, idx) => (
+                <div key={output.id} className="glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+                  {/* Output Header */}
+                  <div className="bg-darkSurface/50 border-b border-white/5 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      {numberOfIdeas > 1 && (
+                        <div className="text-[10px] font-bold text-primaryAccent tracking-widest uppercase mb-1">
+                          Variation {idx + 1} of {outputs.length}
+                        </div>
+                      )}
+                      <h3 className="text-xl font-display font-bold text-white leading-tight">
+                        {output.title}
+                      </h3>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => copyOutput(output)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-medium text-white transition-colors border border-white/5">
+                        <Copy size={14} /> Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Output Body */}
+                  <div className="p-6 space-y-6">
+                    <div>
+                      <div className="text-xs font-bold text-textMuted uppercase tracking-wider mb-3">Introduction</div>
+                      <p className="text-textMain leading-relaxed">{output.introduction}</p>
+                    </div>
+
+                    <div className="w-full h-px bg-darkBorder/50" />
+
+                    <div>
+                      <div className="text-xs font-bold text-textMuted uppercase tracking-wider mb-3">Key Points</div>
+                      <ul className="space-y-2">
+                        {output.keyPoints.map((pt, i) => (
+                          <li key={i} className="flex gap-3 text-textMain leading-relaxed">
+                            <CheckCircle2 size={16} className="text-tertiaryAccent shrink-0 mt-1" />
+                            <span>{pt}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="w-full h-px bg-darkBorder/50" />
+
+                    <div>
+                      <div className="text-xs font-bold text-textMuted uppercase tracking-wider mb-3">Conclusion</div>
+                      <p className="text-textMain leading-relaxed">{output.conclusion}</p>
+                    </div>
+
+                    <div className="pt-2">
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="font-bold text-textMuted mr-2 self-center uppercase tracking-wider">SEO Tags:</span>
+                        {output.keywords.map((k, i) => (
+                          <span key={i} className="px-2 py-1 rounded bg-darkBg border border-darkBorder text-textMuted font-medium">#{k}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
