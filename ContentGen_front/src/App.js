@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { C } from './constants/theme';
-import GlobalStyle from './components/GlobalStyle';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
