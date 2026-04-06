@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import DashboardPage from './DashboardPage';
 import GeneratePage from './GeneratePage';
 import HistoryPage from './HistoryPage';
+import SettingsPage from './SettingsPage';
 
 function Toast({ msg, show }) {
   return (
@@ -118,6 +119,7 @@ export default function AppPage({ user, setUser, setPage }) {
                     showToast={showToast}
                   />
                 )}
+                {tab === "settings" && <SettingsPage showToast={showToast} />}
               </motion.div>
             </AnimatePresence>
           </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Sparkles, Clock, LogOut, BrainCircuit, User } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Clock, LogOut, BrainCircuit, User, Settings } from 'lucide-react';
 
 function SideItem({ icon: IconComponent, label, active, onClick, badge }) {
   const [hov, setHov] = useState(false);
@@ -63,6 +63,7 @@ export default function Sidebar({ tab, setTab, history, user, setUser, setPage }
         <SideItem icon={LayoutDashboard} label="Dashboard" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
         <SideItem icon={Sparkles} label="Generator" active={tab === "generate"} onClick={() => setTab("generate")} />
         <SideItem icon={Clock} label="History" active={tab === "history"} onClick={() => setTab("history")} badge={history.length} />
+        <SideItem icon={Settings} label="Settings" active={tab === "settings"} onClick={() => setTab("settings")} />
       </div>
 
       {/* Pro Tip */}

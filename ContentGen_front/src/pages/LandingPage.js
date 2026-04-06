@@ -92,6 +92,19 @@ export default function LandingPage({ setPage }) {
           </motion.div>
         ))}
       </div>
+
+      {/* Footer */}
+      <footer className="relative z-10 w-full max-w-6xl mx-auto px-6 py-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between text-sm text-textMuted mt-auto">
+        <div className="flex items-center gap-2 mb-4 md:mb-0">
+          <BrainCircuit size={16} className="text-primaryAccent" />
+          <span className="font-semibold text-white">ContentGen</span> &copy; {new Date().getFullYear()}
+        </div>
+        <div className="flex items-center gap-6">
+          <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+          <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+          <a href="#" className="hover:text-white transition-colors">Support</a>
+        </div>
+      </footer>
     </div>
   );
 }
