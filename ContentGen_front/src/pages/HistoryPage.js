@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { C, TEMPLATES, TONES } from '../constants/theme';
-import { BtnGhost, BtnPrimary } from '../components/Buttons';
-import { FilterChip } from '../components/TemplateBtn';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Filter, Search, Trash2, Clock, Sparkles } from 'lucide-react';
+import { TEMPLATES, TONES } from '../constants/theme';
 import HistoryRow from '../components/HistoryRow';
 import Modal from '../components/Modal';
-import Icon from '../components/Icon';
 
 export default function HistoryPage({ history, setHistory, setPrompt, setTemplate, setTone, setTab, showToast }) {
   const [filter, setFilter] = useState("All");
@@ -61,86 +60,134 @@ export default function HistoryPage({ history, setHistory, setPrompt, setTemplat
     }
   }
 
-  const card = { background: C.white, border: `1px solid ${C.gray100}`, borderRadius: 12, padding: "20px 22px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" };
-  const inputStyle = { fontSize: 13, color: C.black, background: C.gray50, border: `1px solid ${C.gray200}`, borderRadius: 8, padding: "8px 14px", transition: "border-color 0.15s", outline: "none" };
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 }
+  };
 
   return (
-    <div>
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full max-w-5xl mx-auto pb-20">
       <Modal item={modalItem} onClose={() => setModalItem(null)} />
 
-      {/* Page header */}
-      <div className="fade-up" style={{ marginBottom: 24 }}>
-        <div style={{ height: 3, width: 32, background: `linear-gradient(90deg, ${C.green}, ${C.teal})`, borderRadius: 2, marginBottom: 14 }} />
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", fontFamily: "'DM Serif Display', serif", color: C.black, marginBottom: 4 }}>Content History</h1>
-            <p style={{ fontSize: 14, color: C.gray600 }}>{history.length} piece{history.length !== 1 ? "s" : ""} generated · View, reuse, or copy past content</p>
-          </div>
-          {history.length > 0 && (
-            <BtnGhost onClick={clearAll} danger>
-              <Icon name="delete" size={13} color={C.gray400} /> Clear All
-            </BtnGhost>
-          )}
+      {/* Page Header */}
+      <motion.div variants={itemVariants} className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <div className="w-8 h-1 bg-gradient-to-r from-primaryAccent to-tertiaryAccent rounded-full mb-4" />
+          <h1 className="text-3xl font-display font-bold text-white mb-2">Content History</h1>
+          <p className="text-textMuted text-sm">
+            {history.length} piece{history.length !== 1 ? "s" : ""} generated · View, reuse, or copy past content
+          </p>
         </div>
-      </div>
+        {history.length > 0 && (
+          <button 
+            onClick={clearAll}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-colors text-sm font-semibold border border-red-500/20"
+          >
+            <Trash2 size={16} /> Clear History
+          </button>
+        )}
+      </motion.div>
 
-      {/* Filters */}
-      <div className="fade-up-1" style={{ ...card, marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="filter" size={14} color={C.gray400} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, textTransform: "uppercase", letterSpacing: "0.07em" }}>Filter</span>
+      {/* Filters Bar */}
+      <motion.div variants={itemVariants} className="glass-panel p-4 rounded-2xl border border-white/5 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex items-center gap-3 pr-4 lg:border-r border-white/10 shrink-0">
+            <Filter size={18} className="text-textMuted" />
+            <span className="text-xs font-bold tracking-widest uppercase text-textMain">Filters</span>
           </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
+          
+          <div className="flex flex-wrap gap-2 flex-1">
             {templates.map(f => (
-              <FilterChip key={f} label={f} active={filter === f} onClick={() => setFilter(f)} />
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  filter === f 
+                    ? 'bg-primaryAccent text-white shadow-lg shadow-primaryAccent/20' 
+                    : 'bg-darkBg text-textMuted border border-darkBorder hover:border-white/20 hover:text-white'
+                }`}
+              >
+                {f}
+              </button>
             ))}
           </div>
-          <div style={{ width: 1, height: 24, background: C.gray200, flexShrink: 0 }} />
-          <select
-            value={toneFilter}
-            onChange={e => setToneFilter(e.target.value)}
-            style={{ ...inputStyle, cursor: "pointer" }}
-          >
-            {tones.map(t => <option key={t}>{t}</option>)}
-          </select>
-          <input
-            placeholder="Search content…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ ...inputStyle, minWidth: 160 }}
-          />
-        </div>
-      </div>
 
-      {/* History list */}
-      <div className="fade-up-2" style={card}>
-        {history.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "48px 0", color: C.gray400 }}>
-            <Icon name="history" size={40} color={C.gray200} />
-            <div style={{ marginTop: 12, fontSize: 15, fontWeight: 500, color: C.gray600 }}>No content generated yet</div>
-            <div style={{ fontSize: 13, color: C.gray400, marginTop: 4 }}>Go to the Generator to create your first piece</div>
-            <BtnPrimary small style={{ marginTop: 18 }} onClick={() => setTab("generate")}>
-              <Icon name="sparkle" size={14} color="#fff" /> Start Generating
-            </BtnPrimary>
+          <div className="flex items-center gap-3 shrink-0">
+            <select
+              value={toneFilter}
+              onChange={e => setToneFilter(e.target.value)}
+              className="bg-darkBg border border-darkBorder rounded-lg px-3 py-2 text-sm text-textMain focus:outline-none focus:border-primaryAccent transition-colors w-32"
+            >
+              {tones.map(t => <option key={t}>{t}</option>)}
+            </select>
+            
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-textMuted" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-48 bg-darkBg border border-darkBorder rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-textMuted/50 focus:outline-none focus:border-primaryAccent focus:ring-1 focus:ring-primaryAccent transition-all"
+              />
+            </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "28px 0", color: C.gray400, fontSize: 13 }}>
-            No results match your filters.
-          </div>
-        ) : (
-          filtered.map(item => (
-            <HistoryRow
-              key={item.id}
-              item={item}
-              onCopy={copyItem}
-              onReuse={reuseItem}
-              onDelete={deleteItem}
-              onView={setModalItem}
-            />
-          ))
-        )}
-      </div>
-    </div>
+        </div>
+      </motion.div>
+
+      {/* History List */}
+      <motion.div variants={itemVariants} className="min-h-[400px]">
+        <AnimatePresence>
+          {history.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="glass-panel rounded-2xl border border-white/5 p-16 flex flex-col items-center justify-center text-center"
+            >
+              <div className="w-20 h-20 rounded-full bg-darkBg border border-darkBorder flex items-center justify-center mb-6">
+                <Clock size={32} className="text-textMuted" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No history</h3>
+              <p className="text-textMuted mb-6 max-w-sm">You haven't generated any content yet. Head over to the Generator to create your first piece.</p>
+              <button 
+                onClick={() => setTab("generate")}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primaryAccent hover:bg-primaryAccent/90 text-white font-semibold transition-colors shadow-lg shadow-primaryAccent/20"
+              >
+                <Sparkles size={18} /> Start Generating
+              </button>
+            </motion.div>
+          ) : filtered.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="glass-panel rounded-2xl border border-white/5 py-16 text-center"
+            >
+              <p className="text-textMuted">No outputs match your current filters.</p>
+              <button 
+                onClick={() => { setFilter("All"); setToneFilter("All"); setSearch(""); }}
+                className="mt-4 text-primaryAccent hover:text-white transition-colors text-sm font-semibold"
+              >
+                Clear Filters
+              </button>
+            </motion.div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map(item => (
+                <HistoryRow
+                  key={item.id}
+                  item={item}
+                  onCopy={copyItem}
+                  onReuse={reuseItem}
+                  onDelete={deleteItem}
+                  onView={setModalItem}
+                />
+              ))}
+            </div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   );
 }
