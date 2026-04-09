@@ -8,6 +8,9 @@ import com.ContentGen.ContentGen_backend.entity.User;
 import com.ContentGen.ContentGen_backend.repository.ContentRepository;
 import com.ContentGen.ContentGen_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import com.google.genai.Client;
@@ -39,6 +42,17 @@ public class ContentServiceImpl implements ContentService {
         }
     }
 
+    /**
+     * Cache key: combination of all request fields that determine the output.
+     * On a cache HIT the Gemini API is NOT called — the cached List<ContentResponse> is returned directly.
+     * On a cache MISS the API is called, result saved to DB, then stored in Redis for 1 hour.
+     */
+    @Cacheable(
+        value = "content-generate",
+        key  = "(#request.userId ?: 'anon') + ':' + #request.topic + ':' + #request.template
+              + ':' + #request.tone + ':' + #request.platform + ':' + #request.audience
+              + ':' + (#request.numberOfIdeas ?: 1)"
+    )
     @Override
     public List<ContentResponse> generateContent(ContentGenerateRequest request) {
         String validUserId = null;
@@ -134,16 +148,35 @@ public class ContentServiceImpl implements ContentService {
         return generatedOutput;
     }
 
+    /** Cache user history for 10 minutes (TTL set in RedisConfig). */
+    @Cacheable(value = "content-history", key = "#userId")
     @Override
     public List<Content> getHistory(String userId) {
+        System.out.println("[Cache MISS] Loading history from DB for userId: " + userId);
         return contentRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
+    /**
+     * Evict both caches on delete:
+     *   - content-history (allEntries) so the deleted item disappears from all user lists
+     *   - content-generate (allEntries) so stale generated content is not served from cache
+     */
+    @Caching(evict = {
+        @CacheEvict(value = "content-history",  allEntries = true),
+        @CacheEvict(value = "content-generate", allEntries = true)
+    })
     @Override
     public void deleteContent(String id) {
         contentRepository.deleteById(id);
     }
 
+    /**
+     * Evict both caches on regenerate so next fetch gets fresh data.
+     */
+    @Caching(evict = {
+        @CacheEvict(value = "content-history",  allEntries = true),
+        @CacheEvict(value = "content-generate", allEntries = true)
+    })
     @Override
     public ContentResponse regenerateContent(String id, ContentRegenerateRequest request) {
         Content content = contentRepository.findById(id)

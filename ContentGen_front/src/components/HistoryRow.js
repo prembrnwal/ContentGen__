@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Copy, RefreshCw, Trash2, FileText, Mail, Linkedin, Megaphone, Share2, Box } from 'lucide-react';
+import { Copy, RefreshCw, Trash2, FileText, Mail, Network, Megaphone, Share2, Box } from 'lucide-react';
 
 const TEMPLATE_META = {
   "Blog": { icon: FileText, color: "text-blue-400", bg: "bg-blue-400/10" },
   "Email": { icon: Mail, color: "text-emerald-400", bg: "bg-emerald-400/10" },
-  "LinkedIn": { icon: Linkedin, color: "text-blue-500", bg: "bg-blue-500/10" },
+  "LinkedIn": { icon: Network, color: "text-blue-500", bg: "bg-blue-500/10" },
   "Ad": { icon: Megaphone, color: "text-orange-400", bg: "bg-orange-400/10" },
   "Social": { icon: Share2, color: "text-purple-400", bg: "bg-purple-400/10" },
   "Product": { icon: Box, color: "text-rose-400", bg: "bg-rose-400/10" }

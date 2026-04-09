@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion';
-import { Sparkles, History, Zap, FileText, Mail, Linkedin, Megaphone, Share2, Box } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, History, Zap, FileText, Mail, Network, Megaphone, Share2, Box } from 'lucide-react';
 
 const TEMPLATE_META = {
   "Blog": { icon: FileText, color: "text-blue-400", bg: "bg-blue-400/10", bar: "bg-blue-400" },
   "Email": { icon: Mail, color: "text-emerald-400", bg: "bg-emerald-400/10", bar: "bg-emerald-400" },
-  "LinkedIn": { icon: Linkedin, color: "text-blue-500", bg: "bg-blue-500/10", bar: "bg-blue-500" },
+  "LinkedIn": { icon: Network, color: "text-blue-500", bg: "bg-blue-500/10", bar: "bg-blue-500" },
   "Ad": { icon: Megaphone, color: "text-orange-400", bg: "bg-orange-400/10", bar: "bg-orange-400" },
   "Social": { icon: Share2, color: "text-purple-400", bg: "bg-purple-400/10", bar: "bg-purple-400" },
   "Product": { icon: Box, color: "text-rose-400", bg: "bg-rose-400/10", bar: "bg-rose-400" }

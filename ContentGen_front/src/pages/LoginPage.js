@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BrainCircuit, Loader2, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 
 export default function LoginPage({ setPage, setUser }) {

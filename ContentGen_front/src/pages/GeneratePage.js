@@ -21,8 +21,8 @@ export default function GeneratePage({
   const [platform, setPlatform] = useState("General");
   const [audience, setAudience] = useState("General Public");
   const [numberOfIdeas, setNumberOfIdeas] = useState(1);
-
   const [loading, setLoading] = useState(false);
+
   const [outputs, setOutputs] = useState([]);
   const [validErr, setValidErr] = useState(false);
   const outputRef = useRef(null);
@@ -39,16 +39,16 @@ export default function GeneratePage({
     setValidErr(false); setLoading(true); setOutputs([]);
 
     try {
-      const res = await fetch("http://localhost:8083/api/content/generate", {
+      const res = await fetch("http://localhost:8084/api/content/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic: p, template: tmpl, tone: tn, platform: plt, audience: aud, numberOfIdeas: numIdeas
         }),
       });
-      
+
       if (!res.ok) throw new Error("Failed to generate content");
-      
+
       const parsed = await res.json();
       const entries = parsed.map((idea, idx) => ({
         ...idea,
@@ -120,11 +120,10 @@ export default function GeneratePage({
               <button
                 key={t.id}
                 onClick={() => setTemplate(t.id)}
-                className={`flex flex-col items-start p-4 rounded-xl border transition-all duration-200 text-left ${
-                  template === t.id
-                    ? 'bg-primaryAccent/10 border-primaryAccent/50 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
-                    : 'bg-darkBg border-darkBorder hover:border-white/20 hover:bg-white/5'
-                }`}
+                className={`flex flex-col items-start p-4 rounded-xl border transition-all duration-200 text-left ${template === t.id
+                  ? 'bg-primaryAccent/10 border-primaryAccent/50 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
+                  : 'bg-darkBg border-darkBorder hover:border-white/20 hover:bg-white/5'
+                  }`}
               >
                 <div className={`font-semibold mb-1 ${template === t.id ? 'text-primaryAccent' : 'text-white'}`}>
                   {t.label}
@@ -175,11 +174,10 @@ export default function GeneratePage({
                     <button
                       key={plt.id}
                       onClick={() => setPlatform(plt.id)}
-                      className={`px-4 py-2 rounded-lg text-sm transition-all duration-200 border ${
-                        platform === plt.id 
-                          ? 'bg-secondaryAccent/20 border-secondaryAccent/50 text-secondaryAccent font-semibold' 
-                          : 'bg-darkBg border-darkBorder text-textMuted hover:text-white hover:border-white/20'
-                      }`}
+                      className={`px-4 py-2 rounded-lg text-sm transition-all duration-200 border ${platform === plt.id
+                        ? 'bg-secondaryAccent/20 border-secondaryAccent/50 text-secondaryAccent font-semibold'
+                        : 'bg-darkBg border-darkBorder text-textMuted hover:text-white hover:border-white/20'
+                        }`}
                     >
                       {plt.label}
                     </button>
@@ -194,11 +192,10 @@ export default function GeneratePage({
                     <button
                       key={n}
                       onClick={() => setNumberOfIdeas(n)}
-                      className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${
-                        numberOfIdeas === n 
-                          ? 'bg-primaryAccent/20 text-primaryAccent' 
-                          : 'text-textMuted hover:text-white'
-                      }`}
+                      className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${numberOfIdeas === n
+                        ? 'bg-primaryAccent/20 text-primaryAccent'
+                        : 'text-textMuted hover:text-white'
+                        }`}
                     >
                       {n}
                     </button>

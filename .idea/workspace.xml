@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="8e471b76-566c-4439-888f-ad41ee3267e3" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/ContentGen_backend/ContentGen_backend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/ContentGen_backend/ContentGen_backend/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ContentGen_front/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/ContentGen_front/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ContentGen_front/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/ContentGen_front/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ContentGen_front/postcss.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ContentGen_front/src/components/HistoryRow.js" beforeDir="false" afterPath="$PROJECT_DIR$/ContentGen_front/src/components/HistoryRow.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ContentGen_front/src/pages/DashboardPage.js" beforeDir="false" afterPath="$PROJECT_DIR$/ContentGen_front/src/pages/DashboardPage.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ContentGen_front/src/pages/GeneratePage.js" beforeDir="false" afterPath="$PROJECT_DIR$/ContentGen_front/src/pages/GeneratePage.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ContentGen_front/src/pages/LoginPage.js" beforeDir="false" afterPath="$PROJECT_DIR$/ContentGen_front/src/pages/LoginPage.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 2
+}]]></component>
+  <component name="ProjectId" id="3C0YIXRMU4GwBoKlSCKQMGVC3XD" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "D:/browsedown/Ctrl+build"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="8e471b76-566c-4439-888f-ad41ee3267e3" name="Changes" comment="" />
+      <created>1775523874430</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1775523874430</updated>
+    </task>
+    <servers />
+  </component>
+</project>
