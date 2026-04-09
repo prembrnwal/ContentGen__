@@ -42,19 +42,26 @@ public class ContentServiceImpl implements ContentService {
         }
     }
 
-    /**
-     * Cache key: combination of all request fields that determine the output.
-     * On a cache HIT the Gemini API is NOT called — the cached List<ContentResponse> is returned directly.
-     * On a cache MISS the API is called, result saved to DB, then stored in Redis for 1 hour.
-     */
+    // -----------------------------------------------------------------------
+    // GENERATE
+    // Cache HIT  → returned from Redis, Gemini API is NOT called.
+    // Cache MISS → Gemini called, DB saved, result stored in Redis for 1 hr.
+    // Key = userId:topic:template:tone:platform:audience:numberOfIdeas
+    // -----------------------------------------------------------------------
     @Cacheable(
         value = "content-generate",
-        key  = "(#request.userId ?: 'anon') + ':' + #request.topic + ':' + #request.template
-              + ':' + #request.tone + ':' + #request.platform + ':' + #request.audience
-              + ':' + (#request.numberOfIdeas ?: 1)"
+        key   = "(#request.userId != null ? #request.userId : 'anon')"
+              + " + ':' + #request.topic"
+              + " + ':' + #request.template"
+              + " + ':' + #request.tone"
+              + " + ':' + #request.platform"
+              + " + ':' + #request.audience"
+              + " + ':' + (#request.numberOfIdeas != null ? #request.numberOfIdeas : 1)"
     )
     @Override
     public List<ContentResponse> generateContent(ContentGenerateRequest request) {
+        System.out.println("[Cache MISS] Calling Gemini API for topic: " + request.getTopic());
+
         String validUserId = null;
         if (request.getUserId() != null) {
             Optional<User> optionalUser = userRepository.findById(request.getUserId());
@@ -65,7 +72,7 @@ public class ContentServiceImpl implements ContentService {
 
         int numIdeas = request.getNumberOfIdeas() != null ? request.getNumberOfIdeas() : 1;
         String generatedText = "[]";
-        
+
         try (Client client = Client.builder().apiKey(geminiApiKey).build()) {
             String fullPrompt = String.format("""
                     You are an expert content strategist and marketing specialist. Return ONLY valid JSON array with no markdown, no preamble.
@@ -98,11 +105,7 @@ public class ContentServiceImpl implements ContentService {
                     """,
                     numIdeas, request.getTopic(), request.getTemplate(), request.getTone(), request.getPlatform(), request.getAudience());
 
-            GenerateContentResponse response =
-                    client.models.generateContent(
-                            "gemini-3-flash-preview",
-                            fullPrompt,
-                            null);
+            GenerateContentResponse response = callGeminiWithRetry(client, "gemini-3-flash-preview", fullPrompt);
 
             generatedText = response.text().replace("```json", "").replace("```", "").trim();
             if (!generatedText.startsWith("[")) {
@@ -145,48 +148,56 @@ public class ContentServiceImpl implements ContentService {
             throw new RuntimeException("Failed to parse JSON response");
         }
 
+        System.out.println("[Cache STORE] Stored " + generatedOutput.size() + " ideas in Redis for topic: " + request.getTopic());
         return generatedOutput;
     }
 
-    /** Cache user history for 10 minutes (TTL set in RedisConfig). */
+    // -----------------------------------------------------------------------
+    // HISTORY — Returns DTOs (never Hibernate entities) to avoid PersistentBag
+    //           serialization issues in Redis. Cached per userId for 10 min.
+    // -----------------------------------------------------------------------
     @Cacheable(value = "content-history", key = "#userId")
     @Override
-    public List<Content> getHistory(String userId) {
+    public List<ContentResponse> getHistory(String userId) {
         System.out.println("[Cache MISS] Loading history from DB for userId: " + userId);
-        return contentRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        return contentRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
     }
 
-    /**
-     * Evict both caches on delete:
-     *   - content-history (allEntries) so the deleted item disappears from all user lists
-     *   - content-generate (allEntries) so stale generated content is not served from cache
-     */
+    // -----------------------------------------------------------------------
+    // DELETE — Evicts both caches so no stale data is ever returned.
+    // -----------------------------------------------------------------------
     @Caching(evict = {
         @CacheEvict(value = "content-history",  allEntries = true),
         @CacheEvict(value = "content-generate", allEntries = true)
     })
     @Override
     public void deleteContent(String id) {
+        System.out.println("[Cache EVICT] Cleared generate + history caches after delete id=" + id);
         contentRepository.deleteById(id);
     }
 
-    /**
-     * Evict both caches on regenerate so next fetch gets fresh data.
-     */
+    // -----------------------------------------------------------------------
+    // REGENERATE — Evicts both caches so next fetch returns fresh data.
+    // -----------------------------------------------------------------------
     @Caching(evict = {
         @CacheEvict(value = "content-history",  allEntries = true),
         @CacheEvict(value = "content-generate", allEntries = true)
     })
     @Override
     public ContentResponse regenerateContent(String id, ContentRegenerateRequest request) {
+        System.out.println("[Cache EVICT] Cleared generate + history caches after regenerate id=" + id);
+
         Content content = contentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Content not found"));
 
-        if (request.getTopic() != null) content.setPrompt(request.getTopic());
+        if (request.getTopic()    != null) content.setPrompt(request.getTopic());
         if (request.getTemplate() != null) content.setTemplate(request.getTemplate());
         if (request.getPlatform() != null) content.setPlatform(request.getPlatform());
         if (request.getAudience() != null) content.setAudience(request.getAudience());
-        if (request.getTone() != null) content.setTone(request.getTone());
+        if (request.getTone()     != null) content.setTone(request.getTone());
 
         String generatedText = "[]";
         try (Client client = Client.builder().apiKey(geminiApiKey).build()) {
@@ -213,17 +224,13 @@ public class ContentServiceImpl implements ContentService {
                     """,
                     content.getPrompt(), content.getTemplate(), content.getTone(), content.getPlatform(), content.getAudience());
 
-            GenerateContentResponse response =
-                    client.models.generateContent(
-                            "gemini-3-flash-preview",
-                            fullPrompt,
-                            null);
+            GenerateContentResponse response = callGeminiWithRetry(client, "gemini-3-flash-preview", fullPrompt);
 
             generatedText = response.text().replace("```json", "").replace("```", "").trim();
             if (!generatedText.startsWith("[")) {
                 generatedText = "[" + generatedText + "]";
             }
-            
+
             List<ContentResponse> parsedIdeas = objectMapper.readValue(generatedText, new TypeReference<List<ContentResponse>>() {});
             if (!parsedIdeas.isEmpty()) {
                 ContentResponse idea = parsedIdeas.get(0);
@@ -234,10 +241,10 @@ public class ContentServiceImpl implements ContentService {
                 content.setKeywords(idea.getKeywords());
                 content.setQualityScore(idea.getQualityScore());
             }
-            
+
             content.setRawJsonResponse(generatedText);
             contentRepository.save(content);
-            
+
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Error regenerating content: " + e.getMessage());
@@ -250,8 +257,35 @@ public class ContentServiceImpl implements ContentService {
     public String downloadContent(String contentId, String format) {
         Content content = contentRepository.findById(contentId)
                 .orElseThrow(() -> new RuntimeException("Content not found"));
-        
         return "https://contentgen.pro/downloads/" + contentId + "." + format.toLowerCase();
+    }
+
+    // -----------------------------------------------------------------------
+    // GEMINI RETRY — Exponential backoff on 503 Service Unavailable.
+    //                Retries up to 3 times: 1s → 2s → 4s.
+    // -----------------------------------------------------------------------
+    private com.google.genai.types.GenerateContentResponse callGeminiWithRetry(
+            Client client, String model, String prompt) {
+        int maxRetries = 3;
+        long delayMs = 1000;
+        Exception lastException = null;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return client.models.generateContent(model, prompt, null);
+            } catch (Exception e) {
+                lastException = e;
+                String msg = e.getMessage() != null ? e.getMessage() : "";
+                boolean is503 = msg.contains("503") || msg.contains("Service Unavailable");
+                if (is503 && attempt < maxRetries) {
+                    System.out.printf("[Gemini Retry] Attempt %d failed (503). Retrying in %dms...%n", attempt, delayMs);
+                    try { Thread.sleep(delayMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                    delayMs *= 2; // exponential backoff
+                } else {
+                    break; // non-503 error or max retries reached
+                }
+            }
+        }
+        throw new RuntimeException("Gemini API error after " + maxRetries + " attempts: " + lastException.getMessage());
     }
 
     private ContentResponse mapToResponse(Content content) {
@@ -259,9 +293,11 @@ public class ContentServiceImpl implements ContentService {
                 .id(content.getId())
                 .title(content.getTitle())
                 .introduction(content.getIntroduction())
-                .keyPoints(content.getKeyPoints())
+                // Force eager materialization — avoids Hibernate PersistentBag being
+                // stored in Redis (which can't deserialize without an active session).
+                .keyPoints(content.getKeyPoints() != null ? new ArrayList<>(content.getKeyPoints()) : null)
                 .conclusion(content.getConclusion())
-                .keywords(content.getKeywords())
+                .keywords(content.getKeywords() != null ? new ArrayList<>(content.getKeywords()) : null)
                 .summary(content.getSummary())
                 .rawJsonResponse(content.getRawJsonResponse())
                 .qualityScore(content.getQualityScore())
@@ -276,3 +312,4 @@ public class ContentServiceImpl implements ContentService {
                 .build();
     }
 }
+

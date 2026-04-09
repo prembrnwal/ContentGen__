@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface ContentService {
     List<ContentResponse> generateContent(ContentGenerateRequest request);
-    List<Content> getHistory(String userId);
+    List<ContentResponse> getHistory(String userId);   // Returns DTOs — never cache raw entities
     void deleteContent(String id);
     ContentResponse regenerateContent(String id, ContentRegenerateRequest request);
     String downloadContent(String contentId, String format);

@@ -30,13 +30,13 @@ public class Content {
     @Column(columnDefinition="TEXT")
     private String introduction;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private List<String> keyPoints;
 
     @Column(columnDefinition="TEXT")
     private String conclusion;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private List<String> keywords;
 
     @Column(columnDefinition="TEXT")

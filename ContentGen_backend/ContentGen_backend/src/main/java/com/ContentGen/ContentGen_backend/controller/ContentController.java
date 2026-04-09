@@ -28,7 +28,7 @@ public class ContentController {
     }
 
     @GetMapping("/history")
-    public ResponseEntity<List<Content>> getHistory(@RequestParam String userId) {
+    public ResponseEntity<List<ContentResponse>> getHistory(@RequestParam String userId) {
         return ResponseEntity.ok(contentService.getHistory(userId));
     }
 
