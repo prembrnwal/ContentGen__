@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, Search, Trash2, Clock, Sparkles } from 'lucide-react';
 import { TEMPLATES, TONES } from '../constants/theme';
+import { supabase } from '../supabase';
 import HistoryRow from '../components/HistoryRow';
 import Modal from '../components/Modal';
 
@@ -36,7 +37,13 @@ export default function HistoryPage({ history, setHistory, setPrompt, setTemplat
 
   async function deleteItem(id) {
     try {
-      await fetch(`http://localhost:8083/api/content/${id}`, { method: 'DELETE' });
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      await fetch(`${process.env.REACT_APP_API_URL}/content/${id}`, { 
+        method: 'DELETE',
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       setHistory(h => h.filter(x => x.id !== id));
       showToast("Deleted from history");
     } catch (err) {
@@ -48,8 +55,14 @@ export default function HistoryPage({ history, setHistory, setPrompt, setTemplat
   async function clearAll() {
     if (window.confirm("Clear all history? This cannot be undone.")) {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
         for (const item of history) {
-          await fetch(`http://localhost:8083/api/content/${item.id}`, { method: 'DELETE' });
+          await fetch(`${process.env.REACT_APP_API_URL}/content/${item.id}`, { 
+            method: 'DELETE',
+            headers: { "Authorization": `Bearer ${token}` }
+          });
         }
         setHistory([]);
         showToast("History cleared");

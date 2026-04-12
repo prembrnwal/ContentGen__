@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, Copy, RefreshCw, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { TEMPLATES, TONES, TONE_HINTS, PLATFORMS, AUDIENCES, NUMBER_OF_IDEAS_OPTIONS } from '../constants/theme';
+import { supabase } from '../supabase';
 
 function FieldLabel({ children }) {
   return (
@@ -39,9 +40,20 @@ export default function GeneratePage({
     setValidErr(false); setLoading(true); setOutputs([]);
 
     try {
-      const res = await fetch("http://localhost:8084/api/content/generate", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        showToast("Session expired. Please log in again.");
+        return;
+      }
+
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/content/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           topic: p, template: tmpl, tone: tn, platform: plt, audience: aud, numberOfIdeas: numIdeas
         }),

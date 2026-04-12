@@ -1,6 +1,7 @@
-import { useState } from 'react';
+     import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrainCircuit, Loader2, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { supabase } from '../supabase';
 
 export default function LoginPage({ setPage, setUser }) {
   const [mode, setMode] = useState("login");
@@ -10,18 +11,43 @@ export default function LoginPage({ setPage, setUser }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e?.preventDefault();
     if (!email || !password || (mode === "signup" && !name)) {
       setErr("Please fill in all fields."); return;
     }
     if (!email.includes("@")) { setErr("Enter a valid email address."); return; }
-    setErr(""); setLoading(true);
-    setTimeout(() => {
+    
+    setErr(""); 
+    setLoading(true);
+
+    try {
+      if (mode === "login") {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        
+        setUser(data.user.email.split("@")[0]);
+        setPage("app");
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: name }
+          }
+        });
+        if (error) throw error;
+        
+        setErr("Success! Please check your email for verification.");
+      }
+    } catch (error) {
+      setErr(error.message);
+    } finally {
       setLoading(false);
-      setUser(mode === "signup" ? name.split(" ")[0] : email.split("@")[0]);
-      setPage("app");
-    }, 1200);
+    }
   }
 
   return (

@@ -6,6 +6,7 @@ import DashboardPage from './DashboardPage';
 import GeneratePage from './GeneratePage';
 import HistoryPage from './HistoryPage';
 import SettingsPage from './SettingsPage';
+import { supabase } from '../supabase';
 
 function Toast({ msg, show }) {
   return (
@@ -33,17 +34,27 @@ export default function AppPage({ user, setUser, setPage }) {
   const [toast, setToast] = useState({ show: false, msg: "" });
 
   useEffect(() => {
-    const userId = user?.id || 'guest';
-    fetch(`http://localhost:8083/api/content/history?userId=${userId}`)
-      .then(res => res.json())
-      .then(data => {
+    const loadHistory = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) return;
+
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/content/history`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
         setHistory(data.map(item => ({
           ...item,
           ts: item.createdAt ? new Date(item.createdAt) : new Date(),
-          prompt: item.prompt || item.topic, // mapped for history page
+          prompt: item.prompt || item.topic,
         })));
-      })
-      .catch(err => console.error("Failed to load history:", err));
+      } catch (err) {
+        console.error("Failed to load history:", err);
+      }
+    };
+    
+    loadHistory();
   }, [user]);
 
   // Shared state to allow history → generate prefill
