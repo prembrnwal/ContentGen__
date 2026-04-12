@@ -30,14 +30,14 @@ public class Content {
     @Column(columnDefinition="TEXT")
     private String introduction;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    private List<String> keyPoints;
+    @OneToMany(mappedBy = "content", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<ContentKeyPoint> keyPoints;
 
     @Column(columnDefinition="TEXT")
     private String conclusion;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    private List<String> keywords;
+    @OneToMany(mappedBy = "content", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<ContentKeyword> keywords;
 
     @Column(columnDefinition="TEXT")
     private String summary;

@@ -3,10 +3,7 @@ package com.ContentGen.ContentGen_backend.service;
 import com.ContentGen.ContentGen_backend.dto.ContentGenerateRequest;
 import com.ContentGen.ContentGen_backend.dto.ContentRegenerateRequest;
 import com.ContentGen.ContentGen_backend.dto.ContentResponse;
-import com.ContentGen.ContentGen_backend.entity.Content;
-import com.ContentGen.ContentGen_backend.entity.User;
-import com.ContentGen.ContentGen_backend.repository.ContentRepository;
-import com.ContentGen.ContentGen_backend.repository.UserRepository;
+import com.ContentGen.ContentGen_backend.entity.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -132,14 +129,25 @@ public class ContentServiceImpl implements ContentService {
                         .tone(request.getTone())
                         .title(idea.getTitle())
                         .introduction(idea.getIntroduction())
-                        .keyPoints(idea.getKeyPoints())
                         .conclusion(idea.getConclusion())
-                        .keywords(idea.getKeywords())
                         .qualityScore(idea.getQualityScore() != null ? idea.getQualityScore() : 95)
                         .numberOfIdeas(numIdeas)
                         .ideaIndex(index)
                         .rawJsonResponse(generatedText)
                         .build();
+
+                // Convert String lists to Entity lists
+                Content finalContent = content; // for lambda
+                if (idea.getKeyPoints() != null) {
+                    content.setKeyPoints(idea.getKeyPoints().stream()
+                            .map(p -> ContentKeyPoint.builder().point(p).content(finalContent).build())
+                            .collect(java.util.stream.Collectors.toList()));
+                }
+                if (idea.getKeywords() != null) {
+                    content.setKeywords(idea.getKeywords().stream()
+                            .map(k -> ContentKeyword.builder().keyword(k).content(finalContent).build())
+                            .collect(java.util.stream.Collectors.toList()));
+                }
 
                 contentRepository.save(content);
                 generatedOutput.add(mapToResponse(content));
@@ -238,10 +246,22 @@ public class ContentServiceImpl implements ContentService {
                 ContentResponse idea = parsedIdeas.get(0);
                 content.setTitle(idea.getTitle());
                 content.setIntroduction(idea.getIntroduction());
-                content.setKeyPoints(idea.getKeyPoints());
                 content.setConclusion(idea.getConclusion());
-                content.setKeywords(idea.getKeywords());
                 content.setQualityScore(idea.getQualityScore());
+
+                // Update Nested entities
+                if (idea.getKeyPoints() != null) {
+                    content.getKeyPoints().clear();
+                    content.getKeyPoints().addAll(idea.getKeyPoints().stream()
+                            .map(p -> ContentKeyPoint.builder().point(p).content(content).build())
+                            .collect(java.util.stream.Collectors.toList()));
+                }
+                if (idea.getKeywords() != null) {
+                    content.getKeywords().clear();
+                    content.getKeywords().addAll(idea.getKeywords().stream()
+                            .map(k -> ContentKeyword.builder().keyword(k).content(content).build())
+                            .collect(java.util.stream.Collectors.toList()));
+                }
             }
 
             content.setRawJsonResponse(generatedText);
@@ -295,11 +315,12 @@ public class ContentServiceImpl implements ContentService {
                 .id(content.getId())
                 .title(content.getTitle())
                 .introduction(content.getIntroduction())
-                // Force eager materialization — avoids Hibernate PersistentBag being
-                // stored in Redis (which can't deserialize without an active session).
-                .keyPoints(content.getKeyPoints() != null ? new ArrayList<>(content.getKeyPoints()) : null)
+                // Force eager materialization and Convert Entity lists back to String lists for DTO
+                .keyPoints(content.getKeyPoints() != null ? 
+                        content.getKeyPoints().stream().map(ContentKeyPoint::getPoint).collect(java.util.stream.Collectors.toList()) : null)
                 .conclusion(content.getConclusion())
-                .keywords(content.getKeywords() != null ? new ArrayList<>(content.getKeywords()) : null)
+                .keywords(content.getKeywords() != null ? 
+                        content.getKeywords().stream().map(ContentKeyword::getKeyword).collect(java.util.stream.Collectors.toList()) : null)
                 .summary(content.getSummary())
                 .rawJsonResponse(content.getRawJsonResponse())
                 .qualityScore(content.getQualityScore())
@@ -314,4 +335,3 @@ public class ContentServiceImpl implements ContentService {
                 .build();
     }
 }
-
