@@ -8,8 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import com.ContentGen.ContentGen_backend.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentResponse;
@@ -25,6 +27,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class ContentServiceImpl implements ContentService {
 
     private final ContentRepository contentRepository;
@@ -59,7 +62,7 @@ public class ContentServiceImpl implements ContentService {
     )
     @Override
     public List<ContentResponse> generateContent(ContentGenerateRequest request) {
-        System.out.println("[Cache MISS] Calling Gemini API for topic: " + request.getTopic());
+        log.info("Generating content for topic: {} using template: {}", request.getTopic(), request.getTemplate());
 
         String validUserId = null;
         if (request.getUserId() != null) {
@@ -111,7 +114,7 @@ public class ContentServiceImpl implements ContentService {
                 generatedText = "[" + generatedText + "]";
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Gemini API call failed: {}", e.getMessage(), e);
             throw new RuntimeException("Error generating content: " + e.getMessage());
         }
 
@@ -158,7 +161,7 @@ public class ContentServiceImpl implements ContentService {
             throw new RuntimeException("Failed to parse JSON response");
         }
 
-        System.out.println("[Cache STORE] Stored " + generatedOutput.size() + " ideas in Redis for topic: " + request.getTopic());
+        log.info("Successfully generated and saved {} content ideas for topic: {}", generatedOutput.size(), request.getTopic());
         return generatedOutput;
     }
 
@@ -332,6 +335,7 @@ public class ContentServiceImpl implements ContentService {
                 .numberOfIdeas(content.getNumberOfIdeas())
                 .ideaIndex(content.getIdeaIndex())
                 .ts(content.getCreatedAt() != null ? content.getCreatedAt().toString() : null)
+                .preview(content.getIntroduction())
                 .build();
     }
 }

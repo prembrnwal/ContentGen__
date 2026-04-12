@@ -10,7 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import java.util.List;
 import java.util.Map;
 
@@ -23,13 +24,22 @@ public class ContentController {
     private final ContentService contentService;
 
     @PostMapping("/generate")
-    public ResponseEntity<List<ContentResponse>> generateContent(@Valid @RequestBody ContentGenerateRequest request) {
+    public ResponseEntity<List<ContentResponse>> generateContent(
+            @Valid @RequestBody ContentGenerateRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        // Extract Supabase User ID if present, otherwise fallback for testing
+        if (jwt != null) {
+            request.setUserId(jwt.getSubject());
+        } else if (request.getUserId() == null) {
+            request.setUserId("test-user-id");
+        }
         return ResponseEntity.ok(contentService.generateContent(request));
     }
 
     @GetMapping("/history")
-    public ResponseEntity<List<ContentResponse>> getHistory(@RequestParam String userId) {
-        return ResponseEntity.ok(contentService.getHistory(userId));
+    public ResponseEntity<List<ContentResponse>> getHistory(@AuthenticationPrincipal Jwt jwt) {
+        // Extract Supabase User ID from JWT 'sub' claim
+        return ResponseEntity.ok(contentService.getHistory(jwt.getSubject()));
     }
 
     @DeleteMapping("/{id}")

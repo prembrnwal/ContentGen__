@@ -31,4 +31,5 @@ public class ContentResponse {
     private Integer numberOfIdeas;
     private Integer ideaIndex;
     private String ts;
+    private String preview; // Added to match frontend 'preview' expectations
 }
