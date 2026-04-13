@@ -58,12 +58,14 @@ export default function HistoryPage({ history, setHistory, setPrompt, setTemplat
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
-        for (const item of history) {
-          await fetch(`${process.env.REACT_APP_API_URL}/content/${item.id}`, { 
-            method: 'DELETE',
-            headers: { "Authorization": `Bearer ${token}` }
-          });
-        }
+        await Promise.all(
+          history.map(item =>
+            fetch(`${process.env.REACT_APP_API_URL}/content/${item.id}`, {
+              method: 'DELETE',
+              headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+            })
+          )
+        );
         setHistory([]);
         showToast("History cleared");
       } catch (err) {
