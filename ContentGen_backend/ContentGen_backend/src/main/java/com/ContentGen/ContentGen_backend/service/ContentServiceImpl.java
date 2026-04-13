@@ -179,25 +179,27 @@ public class ContentServiceImpl implements ContentService {
     })
     @Override
     public ContentResponse regenerateContent(String id, ContentRegenerateRequest request) {
-        System.out.println("[Cache EVICT] Cleared generate + history caches after regenerate id=" + id);
+        System.out.println("[Cache EVICT] Cleared generate + history caches after regenerate based on id=" + id);
 
-        Content content = contentRepository.findById(id)
+        Content oldContent = contentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Content not found"));
 
-        if (request.getTopic()    != null) content.setPrompt(request.getTopic());
-        if (request.getTemplate() != null) content.setTemplate(request.getTemplate());
-        if (request.getPlatform() != null) content.setPlatform(request.getPlatform());
-        if (request.getAudience() != null) content.setAudience(request.getAudience());
-        if (request.getTone()     != null) content.setTone(request.getTone());
+        Content newEntity = new Content();
+        newEntity.setPrompt(request.getTopic() != null ? request.getTopic() : oldContent.getPrompt());
+        newEntity.setTemplate(request.getTemplate() != null ? request.getTemplate() : oldContent.getTemplate());
+        newEntity.setPlatform(request.getPlatform() != null ? request.getPlatform() : oldContent.getPlatform());
+        newEntity.setAudience(request.getAudience() != null ? request.getAudience() : oldContent.getAudience());
+        newEntity.setTone(request.getTone() != null ? request.getTone() : oldContent.getTone());
+        newEntity.setUserId(oldContent.getUserId());
 
         String generatedText = "[]";
         try (Client client = Client.builder().apiKey(geminiApiKey).build()) {
             String fullPrompt = aiPromptProperties.getRegenerate()
-                    .replace("{topic}", content.getPrompt() != null ? content.getPrompt() : "")
-                    .replace("{template}", content.getTemplate() != null ? content.getTemplate() : "")
-                    .replace("{tone}", content.getTone() != null ? content.getTone() : "")
-                    .replace("{platform}", content.getPlatform() != null ? content.getPlatform() : "")
-                    .replace("{audience}", content.getAudience() != null ? content.getAudience() : "");
+                    .replace("{topic}", newEntity.getPrompt() != null ? newEntity.getPrompt() : "")
+                    .replace("{template}", newEntity.getTemplate() != null ? newEntity.getTemplate() : "")
+                    .replace("{tone}", newEntity.getTone() != null ? newEntity.getTone() : "")
+                    .replace("{platform}", newEntity.getPlatform() != null ? newEntity.getPlatform() : "")
+                    .replace("{audience}", newEntity.getAudience() != null ? newEntity.getAudience() : "");
 
             GenerateContentResponse response = callGeminiWithRetry(client, "gemini-3-flash-preview", fullPrompt);
 
@@ -209,35 +211,29 @@ public class ContentServiceImpl implements ContentService {
             List<ContentResponse> parsedIdeas = objectMapper.readValue(generatedText, new TypeReference<List<ContentResponse>>() {});
             if (!parsedIdeas.isEmpty()) {
                 ContentResponse idea = parsedIdeas.get(0);
-                content.setTitle(idea.getTitle());
-                content.setIntroduction(idea.getIntroduction());
-                content.setConclusion(idea.getConclusion());
-                content.setQualityScore(idea.getQualityScore());
+                newEntity.setTitle(idea.getTitle());
+                newEntity.setIntroduction(idea.getIntroduction());
+                newEntity.setConclusion(idea.getConclusion());
+                newEntity.setQualityScore(idea.getQualityScore());
 
-                // Update Nested entities
                 if (idea.getKeyPoints() != null) {
-                    content.getKeyPoints().clear();
-                    content.getKeyPoints().addAll(idea.getKeyPoints().stream()
-                            .map(p -> ContentKeyPoint.builder().point(p).content(content).build())
+                    newEntity.setKeyPoints(idea.getKeyPoints().stream()
+                            .map(p -> ContentKeyPoint.builder().point(p).content(newEntity).build())
                             .collect(java.util.stream.Collectors.toList()));
                 }
                 if (idea.getKeywords() != null) {
-                    content.getKeywords().clear();
-                    content.getKeywords().addAll(idea.getKeywords().stream()
-                            .map(k -> ContentKeyword.builder().keyword(k).content(content).build())
+                    newEntity.setKeywords(idea.getKeywords().stream()
+                            .map(k -> ContentKeyword.builder().keyword(k).content(newEntity).build())
                             .collect(java.util.stream.Collectors.toList()));
                 }
             }
 
-            content.setRawJsonResponse(generatedText);
-            contentRepository.save(content);
-
+            newEntity.setRawJsonResponse(generatedText);
+            return mapToResponse(contentRepository.save(newEntity));
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error regenerating content: " + e.getMessage());
+            System.err.println("Error in regenerateContent: " + e.getMessage());
+            throw new RuntimeException("Regeneration failed: " + e.getMessage());
         }
-
-        return mapToResponse(content);
     }
 
     @Override
