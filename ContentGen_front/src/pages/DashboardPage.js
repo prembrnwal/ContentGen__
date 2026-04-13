@@ -46,7 +46,7 @@ export default function DashboardPage({ history, sessionCount = 0, setTab }) {
             <div className="text-xs text-textMuted">All time</div>
           </div>
         </div>
-        
+
         <div className="glass-panel p-5 rounded-2xl border border-white/5 relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-secondaryAccent/10 to-transparent" />
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -83,7 +83,7 @@ export default function DashboardPage({ history, sessionCount = 0, setTab }) {
               const count = countsByTemplate[t];
               const pct = history.length > 0 ? (count / history.length) * 100 : 0;
               const meta = TEMPLATE_META[t] || TEMPLATE_META["Blog"];
-              
+
               return (
                 <div key={t}>
                   <div className="flex justify-between text-sm mb-2">
@@ -93,7 +93,7 @@ export default function DashboardPage({ history, sessionCount = 0, setTab }) {
                     <span className="text-textMuted text-xs font-bold">{count}</span>
                   </div>
                   <div className="h-2 bg-darkBg rounded-full overflow-hidden border border-white/5">
-                    <motion.div 
+                    <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
                       transition={{ duration: 1, ease: "easeOut" }}
@@ -123,7 +123,7 @@ export default function DashboardPage({ history, sessionCount = 0, setTab }) {
                 <History size={24} className="text-textMuted" />
               </div>
               <p className="text-textMuted text-sm mb-4">No content generated yet.</p>
-              <button 
+              <button
                 onClick={() => setTab("generate")}
                 className="text-sm font-semibold text-primaryAccent hover:text-white transition-colors flex items-center gap-2"
               >
@@ -135,11 +135,11 @@ export default function DashboardPage({ history, sessionCount = 0, setTab }) {
               {recent.map((item, idx) => {
                 const meta = TEMPLATE_META[item.template] || TEMPLATE_META["Blog"];
                 return (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.1 }}
-                    key={item.id} 
+                    key={item.id}
                     className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-colors group cursor-pointer"
                   >
                     <div className={`w-10 h-10 rounded-lg ${meta.bg} flex items-center justify-center shrink-0 border border-white/5`}>
@@ -167,7 +167,7 @@ export default function DashboardPage({ history, sessionCount = 0, setTab }) {
       {/* CTA section (if no history) */}
       <AnimatePresence>
         {history.length === 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="mt-6 rounded-2xl bg-gradient-to-r from-primaryAccent/20 to-tertiaryAccent/20 border border-primaryAccent/30 p-8 flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden group"
