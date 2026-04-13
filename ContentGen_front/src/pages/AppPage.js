@@ -31,27 +31,31 @@ function Toast({ msg, show }) {
 export default function AppPage({ user, setUser, setPage }) {
   const [tab, setTab] = useState("generate");
   const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [sessionCount, setSessionCount] = useState(0);
   const [toast, setToast] = useState({ show: false, msg: "" });
 
   useEffect(() => {
     const loadHistory = async () => {
+      setHistoryLoading(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
-        if (!token) return;
+        if (!token) { setHistoryLoading(false); return; }
 
         const res = await fetch(`${process.env.REACT_APP_API_URL}/content/history`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const data = await res.json();
-        setHistory(data.map(item => ({
+        setHistory(Array.isArray(data) ? data.map(item => ({
           ...item,
           ts: item.createdAt ? new Date(item.createdAt) : new Date(),
           prompt: item.prompt || item.topic,
-        })));
+        })) : []);
       } catch (err) {
         console.error("Failed to load history:", err);
+      } finally {
+        setHistoryLoading(false);
       }
     };
     
@@ -126,6 +130,7 @@ export default function AppPage({ user, setUser, setPage }) {
                 {tab === "history" && (
                   <HistoryPage
                     history={history}
+                    historyLoading={historyLoading}
                     setHistory={setHistory}
                     setPrompt={setSharedPrompt}
                     setTemplate={setSharedTemplate}

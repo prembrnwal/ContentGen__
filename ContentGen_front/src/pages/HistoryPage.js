@@ -6,7 +6,7 @@ import { supabase } from '../supabase';
 import HistoryRow from '../components/HistoryRow';
 import Modal from '../components/Modal';
 
-export default function HistoryPage({ history, setHistory, setPrompt, setTemplate, setTone, setTab, showToast }) {
+export default function HistoryPage({ history, historyLoading = false, setHistory, setPrompt, setTemplate, setTone, setTab, showToast }) {
   const [filter, setFilter] = useState("All");
   const [toneFilter, setToneFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -157,7 +157,23 @@ export default function HistoryPage({ history, setHistory, setPrompt, setTemplat
       {/* History List */}
       <motion.div variants={itemVariants} className="min-h-[400px]">
         <AnimatePresence>
-          {history.length === 0 ? (
+          {historyLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="glass-panel rounded-2xl border border-white/5 p-5 animate-pulse">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-white/5 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 bg-white/5 rounded-full w-2/3" />
+                      <div className="h-2.5 bg-white/5 rounded-full w-1/3" />
+                    </div>
+                    <div className="h-6 w-16 bg-white/5 rounded-lg" />
+                    <div className="h-6 w-16 bg-white/5 rounded-lg" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : history.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="glass-panel rounded-2xl border border-white/5 p-16 flex flex-col items-center justify-center text-center"
