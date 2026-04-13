@@ -38,3 +38,8 @@ build/
 
 ### Config ###
 src/main/resources/application.properties
+src/main/resources/application.yml
+
+### JVM Crash Logs ###
+hs_err_pid*.log
+replay_pid*.log

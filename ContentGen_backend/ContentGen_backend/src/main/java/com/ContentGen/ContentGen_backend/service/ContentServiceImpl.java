@@ -33,6 +33,7 @@ public class ContentServiceImpl implements ContentService {
     private final ContentRepository contentRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final com.ContentGen.ContentGen_backend.config.AiPromptProperties aiPromptProperties;
 
     @Value("${gemini.api.key}")
     private String geminiApiKey;
@@ -76,36 +77,13 @@ public class ContentServiceImpl implements ContentService {
         String generatedText = "[]";
 
         try (Client client = Client.builder().apiKey(geminiApiKey).build()) {
-            String fullPrompt = String.format("""
-                    You are an expert content strategist and marketing specialist. Return ONLY valid JSON array with no markdown, no preamble.
-                    Return a JSON array of %d idea objects.
-
-                    Generate structured and creative content ideas based on the following inputs:
-                    Topic: %s
-                    Template: %s
-                    Tone: %s
-                    Platform: %s
-                    Target Audience: %s
-                    
-                    Instructions:
-                    - Generate diverse and engaging content ideas
-                    - Avoid repetition
-                    - Make ideas practical and useful
-                    - Ensure ideas are relevant to the target audience
-                    - Keep descriptions concise but meaningful
-                    - Maintain the requested tone
-
-                    Each idea object must match this exact shape:
-                    {
-                      "title": "string",
-                      "introduction": "2-3 sentences",
-                      "keyPoints": ["string", "string", "string", "string"],
-                      "conclusion": "2 sentences",
-                      "keywords": ["word1", "word2", "word3", "word4", "word5"],
-                      "qualityScore": number_60_to_98
-                    }
-                    """,
-                    numIdeas, request.getTopic(), request.getTemplate(), request.getTone(), request.getPlatform(), request.getAudience());
+            String fullPrompt = aiPromptProperties.getGenerate()
+                    .replace("{numIdeas}", String.valueOf(numIdeas))
+                    .replace("{topic}", request.getTopic() != null ? request.getTopic() : "")
+                    .replace("{template}", request.getTemplate() != null ? request.getTemplate() : "")
+                    .replace("{tone}", request.getTone() != null ? request.getTone() : "")
+                    .replace("{platform}", request.getPlatform() != null ? request.getPlatform() : "")
+                    .replace("{audience}", request.getAudience() != null ? request.getAudience() : "");
 
             GenerateContentResponse response = callGeminiWithRetry(client, "gemini-3-flash-preview", fullPrompt);
 
@@ -214,28 +192,12 @@ public class ContentServiceImpl implements ContentService {
 
         String generatedText = "[]";
         try (Client client = Client.builder().apiKey(geminiApiKey).build()) {
-            String fullPrompt = String.format("""
-                    You are an expert content strategist and marketing specialist. Return ONLY valid JSON array with no markdown, no preamble.
-                    Return a JSON array of 1 idea object.
-
-                    Regenerate structured and creative content ideas based on the following inputs:
-                    Topic: %s
-                    Template: %s
-                    Tone: %s
-                    Platform: %s
-                    Target Audience: %s
-                    
-                    Each idea object must match this exact shape:
-                    {
-                      "title": "string",
-                      "introduction": "2-3 sentences",
-                      "keyPoints": ["string", "string", "string", "string"],
-                      "conclusion": "2 sentences",
-                      "keywords": ["word1", "word2", "word3", "word4", "word5"],
-                      "qualityScore": number_60_to_98
-                    }
-                    """,
-                    content.getPrompt(), content.getTemplate(), content.getTone(), content.getPlatform(), content.getAudience());
+            String fullPrompt = aiPromptProperties.getRegenerate()
+                    .replace("{topic}", content.getPrompt() != null ? content.getPrompt() : "")
+                    .replace("{template}", content.getTemplate() != null ? content.getTemplate() : "")
+                    .replace("{tone}", content.getTone() != null ? content.getTone() : "")
+                    .replace("{platform}", content.getPlatform() != null ? content.getPlatform() : "")
+                    .replace("{audience}", content.getAudience() != null ? content.getAudience() : "");
 
             GenerateContentResponse response = callGeminiWithRetry(client, "gemini-3-flash-preview", fullPrompt);
 
