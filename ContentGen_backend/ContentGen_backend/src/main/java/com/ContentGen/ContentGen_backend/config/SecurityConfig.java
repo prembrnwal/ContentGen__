@@ -4,12 +4,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -17,36 +21,47 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(org.springframework.security.config.Customizer.withDefaults())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/templates/**", "/api/tones/**").permitAll()
-                .requestMatchers("/api/content/**").permitAll()
                 .anyRequest().permitAll()
             )
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt(org.springframework.security.config.Customizer.withDefaults()))
+            // Disabled JWT scanning temporarily!
+            // .oauth2ResourceServer(oauth2 -> oauth2.jwt(org.springframework.security.config.Customizer.withDefaults()))
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
-
+            
         return http.build();
     }
 
+    /*
     @Bean
     public JwtDecoder jwtDecoder() {
-        String jwkSetUri = "https://fnlqwxouzymlntraktjs.supabase.co/auth/v1/jwks.json";
-        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        return token -> {
+            try {
+                com.nimbusds.jwt.JWT parsedJwt = com.nimbusds.jwt.JWTParser.parse(token);
+                java.util.Map<String, Object> claims = parsedJwt.getJWTClaimsSet().getClaims();
+                return org.springframework.security.oauth2.jwt.Jwt.withTokenValue(token)
+                        .headers(h -> h.putAll(parsedJwt.getHeader().toJSONObject()))
+                        .claims(c -> c.putAll(claims))
+                        .build();
+            } catch (Exception e) {
+                throw new org.springframework.security.oauth2.jwt.JwtException("Failed to decode token", e);
+            }
+        };
+    }
+    */
 
-        // Custom validator to accept Supabase's "authenticated" audience
-        OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<java.util.List<String>>(
-            JwtClaimNames.AUD, aud -> aud.contains("authenticated")
-        );
-
-        // Combine with default validators (expiry, issuer, etc.)
-        jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-            JwtValidators.createDefault(), 
-            audienceValidator
-        ));
-
-        return jwtDecoder;
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
