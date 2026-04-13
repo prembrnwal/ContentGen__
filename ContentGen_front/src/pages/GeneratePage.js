@@ -82,8 +82,26 @@ export default function GeneratePage({
   }
 
   function copyOutput(item) {
-    const txt = `${item.title}\n\n${item.introduction}\n\nKey Points:\n${item.keyPoints.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\n${item.conclusion}\n\nKeywords: ${item.keywords.join(", ")}`;
-    navigator.clipboard.writeText(txt).then(() => showToast("Copied to clipboard"));
+    const keyPoints = Array.isArray(item.keyPoints) ? item.keyPoints : [];
+    const keywords = Array.isArray(item.keywords) ? item.keywords : [];
+    
+    const txt = `${item.title || ""}\n\n${item.introduction || ""}\n\nKey Points:\n${keyPoints.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\n${item.conclusion || ""}\n\nKeywords: ${keywords.join(", ")}`;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(() => showToast("Copied to clipboard"));
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = txt;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast("Copied to clipboard");
+      } catch (err) {
+        showToast("Copy failed");
+      }
+      document.body.removeChild(textArea);
+    }
   }
 
   async function regenerateOutput(output) {
@@ -109,10 +127,21 @@ export default function GeneratePage({
 
       if (!res.ok) throw new Error("Regeneration failed");
       const updated = await res.json();
+      
+      const newEntry = { 
+        ...updated, 
+        ts: new Date(),
+        prompt: updated.prompt || updated.topic
+      };
 
-      setOutputs(prev => prev.map(o => o.id === output.id ? { ...updated, ts: new Date() } : o));
-      setHistory(h => h.map(o => o.id === output.id ? { ...updated, ts: new Date() } : o));
-      showToast("Content regenerated!");
+      // Add to outputs list so user sees it at the top
+      setOutputs(prev => [newEntry, ...prev]);
+      
+      // PREVIOUS GENERATED DATA SHOULD ALSO BE THERE IN HISTORY
+      // So we pre-pend the new one, do NOT replace/map the old one
+      setHistory(h => [newEntry, ...h]);
+      
+      showToast("Content regenerated! New version added to history.");
     } catch (err) {
       console.error(err);
       showToast("Regeneration failed. Please retry.");
