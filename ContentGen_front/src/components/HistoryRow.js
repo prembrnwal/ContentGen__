@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, RefreshCw, Trash2, FileText, Mail, Network, Megaphone, Share2, Box } from 'lucide-react';
+import { Copy, RefreshCw, RotateCcw, Trash2, FileText, Mail, Network, Megaphone, Share2, Box, Loader2 } from 'lucide-react';
 
 const TEMPLATE_META = {
   "Blog": { icon: FileText, color: "text-blue-400", bg: "bg-blue-400/10" },
@@ -10,9 +10,17 @@ const TEMPLATE_META = {
   "Product": { icon: Box, color: "text-rose-400", bg: "bg-rose-400/10" }
 };
 
-export default function HistoryRow({ item, onCopy, onReuse, onDelete, onView }) {
+export default function HistoryRow({ item, onCopy, onReuse, onDelete, onView, onRegenerate }) {
   const [hov, setHov] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const meta = TEMPLATE_META[item.template] || TEMPLATE_META["Blog"];
+
+  async function handleRegenerate(e) {
+    e.stopPropagation();
+    setRegenerating(true);
+    await onRegenerate(item);
+    setRegenerating(false);
+  }
 
   return (
     <div
@@ -56,25 +64,33 @@ export default function HistoryRow({ item, onCopy, onReuse, onDelete, onView }) 
         </div>
       </div>
 
-      <div 
+      <div
         className={`flex items-center gap-2 sm:opacity-0 group-hover:opacity-100 transition-opacity mt-2 sm:mt-0`}
         onClick={e => e.stopPropagation()}
       >
-        <button 
+        <button
           onClick={() => onCopy(item)}
           className="p-2 rounded-lg bg-darkBg border border-darkBorder text-textMuted hover:text-white hover:border-white/20 transition-colors"
           title="Copy"
         >
           <Copy size={16} />
         </button>
-        <button 
+        <button
+          onClick={handleRegenerate}
+          disabled={regenerating}
+          className="p-2 rounded-lg bg-secondaryAccent/10 border border-secondaryAccent/20 text-secondaryAccent hover:bg-secondaryAccent hover:text-white transition-colors disabled:opacity-50"
+          title="Regenerate"
+        >
+          {regenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+        </button>
+        <button
           onClick={() => onReuse(item)}
           className="p-2 rounded-lg bg-primaryAccent/10 border border-primaryAccent/20 text-primaryAccent hover:bg-primaryAccent hover:text-white transition-colors"
-          title="Reuse prompt"
+          title="Reuse prompt in Generator"
         >
-          <RefreshCw size={16} />
+          <RotateCcw size={16} />
         </button>
-        <button 
+        <button
           onClick={() => onDelete(item.id)}
           className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-colors ml-2"
           title="Delete"

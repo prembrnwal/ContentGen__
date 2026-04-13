@@ -52,6 +52,37 @@ export default function HistoryPage({ history, historyLoading = false, setHistor
     }
   }
 
+  async function regenerateItem(item) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/content/regenerate/${item.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          topic: item.topic || item.prompt,
+          template: item.template,
+          tone: item.tone,
+          platform: item.platform,
+          audience: item.audience,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Regeneration failed");
+      const updated = await res.json();
+
+      setHistory(h => h.map(o => o.id === item.id ? { ...updated, ts: new Date() } : o));
+      showToast("Content regenerated!");
+    } catch (err) {
+      console.error(err);
+      showToast("Regeneration failed");
+    }
+  }
+
   async function clearAll() {
     if (window.confirm("Clear all history? This cannot be undone.")) {
       try {
@@ -213,6 +244,7 @@ export default function HistoryPage({ history, historyLoading = false, setHistor
                   onReuse={reuseItem}
                   onDelete={deleteItem}
                   onView={setModalItem}
+                  onRegenerate={regenerateItem}
                 />
               ))}
             </div>
