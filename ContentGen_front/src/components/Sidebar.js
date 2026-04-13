@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Sparkles, Clock, LogOut, BrainCircuit, User, Settings } from 'lucide-react';
+import ProfileModal from './ProfileModal';
 
 function SideItem({ icon: IconComponent, label, active, onClick, badge }) {
   const [hov, setHov] = useState(false);
@@ -27,6 +28,8 @@ function SideItem({ icon: IconComponent, label, active, onClick, badge }) {
 }
 
 export default function Sidebar({ tab, setTab, history, user, setUser, setPage }) {
+  const [showProfile, setShowProfile] = useState(false);
+
   return (
     <div className="w-[260px] shrink-0 bg-darkSurface border-r border-darkBorder flex flex-col h-screen sticky top-0 z-40">
       {/* Logo */}
@@ -44,17 +47,22 @@ export default function Sidebar({ tab, setTab, history, user, setUser, setPage }
         </div>
       </div>
 
-      {/* User info */}
+      {/* User info (Clickable for Profile) */}
       <div className="p-4 border-b border-darkBorder/50">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-darkBg border border-darkBorder/50">
-          <div className="w-8 h-8 rounded-full bg-primaryAccent/20 flex items-center justify-center border border-primaryAccent/30">
-            <User size={14} className="text-primaryAccent" />
+        <button 
+          onClick={() => setShowProfile(true)}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-darkBg border border-darkBorder/50 hover:border-white/20 hover:bg-white/5 transition-all group cursor-pointer text-left overflow-hidden"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-primaryAccent/20 flex shrink-0 items-center justify-center border border-primaryAccent/30 group-hover:scale-105 transition-transform">
+              <User size={14} className="text-primaryAccent" />
+            </div>
+            <div className="min-w-0 overflow-hidden">
+              <div className="text-sm font-semibold text-white truncate">{user || "User"}</div>
+              <div className="text-[11px] text-textMuted font-medium">Pro Plan</div>
+            </div>
           </div>
-          <div className="overflow-hidden">
-            <div className="text-sm font-semibold text-white truncate">{user || "User"}</div>
-            <div className="text-[11px] text-textMuted font-medium">Pro Plan</div>
-          </div>
-        </div>
+        </button>
       </div>
 
       {/* Nav */}
@@ -83,6 +91,14 @@ export default function Sidebar({ tab, setTab, history, user, setUser, setPage }
       <div className="p-4 border-t border-darkBorder/50">
         <SideItem icon={LogOut} label="Log out" onClick={() => { setUser(null); setPage("landing"); }} />
       </div>
+
+      <ProfileModal 
+        isOpen={showProfile} 
+        onClose={() => setShowProfile(false)} 
+        user={user} 
+        historyCount={history.length} 
+        onLogout={() => { setUser(null); setPage("landing"); }}
+      />
     </div>
   );
 }
