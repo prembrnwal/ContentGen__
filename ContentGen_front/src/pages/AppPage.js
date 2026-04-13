@@ -31,6 +31,7 @@ function Toast({ msg, show }) {
 export default function AppPage({ user, setUser, setPage }) {
   const [tab, setTab] = useState("generate");
   const [history, setHistory] = useState([]);
+  const [sessionCount, setSessionCount] = useState(0);
   const [toast, setToast] = useState({ show: false, msg: "" });
 
   useEffect(() => {
@@ -106,12 +107,15 @@ export default function AppPage({ user, setUser, setPage }) {
                 className="w-full h-full"
               >
                 {tab === "dashboard" && (
-                  <DashboardPage history={history} setTab={setTab} />
+                  <DashboardPage history={history} sessionCount={sessionCount} setTab={setTab} />
                 )}
                 {tab === "generate" && (
                   <GeneratePage
                     history={history}
-                    setHistory={setHistory}
+                    setHistory={(updater) => {
+                      setHistory(updater);
+                    }}
+                    onGenerated={(count) => setSessionCount(n => n + count)}
                     setTab={setTab}
                     showToast={showToast}
                     initialPrompt={sharedPrompt}

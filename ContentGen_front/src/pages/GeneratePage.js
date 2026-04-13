@@ -13,7 +13,7 @@ function FieldLabel({ children }) {
 }
 
 export default function GeneratePage({
-  history, setHistory, setTab, showToast,
+  history, setHistory, setTab, showToast, onGenerated,
   initialPrompt = "", initialTemplate = "Blog", initialTone = "Professional",
 }) {
   const [topic, setTopic] = useState(initialPrompt);
@@ -23,6 +23,7 @@ export default function GeneratePage({
   const [audience, setAudience] = useState("General Public");
   const [numberOfIdeas, setNumberOfIdeas] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [regeneratingId, setRegeneratingId] = useState(null);
 
   const [outputs, setOutputs] = useState([]);
   const [validErr, setValidErr] = useState(false);
@@ -70,6 +71,7 @@ export default function GeneratePage({
 
       setOutputs(entries);
       setHistory(h => [...entries.reverse(), ...h]);
+      if (onGenerated) onGenerated(entries.length);
 
       setTimeout(() => outputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch (err) {
@@ -82,6 +84,40 @@ export default function GeneratePage({
   function copyOutput(item) {
     const txt = `${item.title}\n\n${item.introduction}\n\nKey Points:\n${item.keyPoints.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\n${item.conclusion}\n\nKeywords: ${item.keywords.join(", ")}`;
     navigator.clipboard.writeText(txt).then(() => showToast("Copied to clipboard"));
+  }
+
+  async function regenerateOutput(output) {
+    setRegeneratingId(output.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/content/regenerate/${output.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          topic: output.topic,
+          template: output.template,
+          tone: output.tone,
+          platform: output.platform,
+          audience: output.audience,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Regeneration failed");
+      const updated = await res.json();
+
+      setOutputs(prev => prev.map(o => o.id === output.id ? { ...updated, ts: new Date() } : o));
+      setHistory(h => h.map(o => o.id === output.id ? { ...updated, ts: new Date() } : o));
+      showToast("Content regenerated!");
+    } catch (err) {
+      console.error(err);
+      showToast("Regeneration failed. Please retry.");
+    }
+    setRegeneratingId(null);
   }
 
   const containerVariants = {
@@ -269,6 +305,14 @@ export default function GeneratePage({
                       </h3>
                     </div>
                     <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => regenerateOutput(output)}
+                        disabled={regeneratingId === output.id}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondaryAccent/10 hover:bg-secondaryAccent/20 text-secondaryAccent text-sm font-medium transition-colors border border-secondaryAccent/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw size={14} className={regeneratingId === output.id ? 'animate-spin' : ''} />
+                        {regeneratingId === output.id ? 'Regenerating...' : 'Regenerate'}
+                      </button>
                       <button onClick={() => copyOutput(output)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-medium text-white transition-colors border border-white/5">
                         <Copy size={14} /> Copy
                       </button>

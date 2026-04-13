@@ -10,7 +10,7 @@ const TEMPLATE_META = {
   "Product": { icon: Box, color: "text-rose-400", bg: "bg-rose-400/10", bar: "bg-rose-400" }
 };
 
-export default function DashboardPage({ history, setTab }) {
+export default function DashboardPage({ history, sessionCount = 0, setTab }) {
   const templates = ["Blog", "Email", "LinkedIn", "Ad", "Social", "Product"];
   const countsByTemplate = {};
   templates.forEach(t => { countsByTemplate[t] = history.filter(h => h.template === t).length; });
@@ -54,7 +54,7 @@ export default function DashboardPage({ history, setTab }) {
           </div>
           <div className="relative z-10">
             <div className="text-sm font-semibold text-secondaryAccent uppercase tracking-wider mb-2">This Session</div>
-            <div className="text-4xl font-display font-bold text-white mb-1">{history.length}</div>
+            <div className="text-4xl font-display font-bold text-white mb-1">{sessionCount}</div>
             <div className="text-xs text-textMuted">Since you opened the app</div>
           </div>
         </div>
