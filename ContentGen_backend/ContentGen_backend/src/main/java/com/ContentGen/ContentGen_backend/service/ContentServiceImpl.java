@@ -65,11 +65,17 @@ public class ContentServiceImpl implements ContentService {
     public List<ContentResponse> generateContent(ContentGenerateRequest request) {
         log.info("Generating content for topic: {} using template: {}", request.getTopic(), request.getTemplate());
 
-        String validUserId = null;
+        String validUserId = "anon";
         if (request.getUserId() != null) {
-            Optional<User> optionalUser = userRepository.findById(request.getUserId());
-            if (optionalUser.isPresent()) {
-                validUserId = optionalUser.get().getId();
+            validUserId = request.getUserId();
+            if (!userRepository.existsById(validUserId)) {
+                log.info("[User Sync] Creating new user record for ID: {}", validUserId);
+                User newUser = User.builder()
+                        .id(validUserId)
+                        .username("user-" + validUserId.substring(0, 8))
+                        .createdAt(java.time.LocalDateTime.now())
+                        .build();
+                userRepository.save(newUser);
             }
         }
 
@@ -150,7 +156,17 @@ public class ContentServiceImpl implements ContentService {
     @Cacheable(value = "content-history", key = "#userId")
     @Override
     public List<ContentResponse> getHistory(String userId) {
-        System.out.println("[Cache MISS] Loading history from DB for userId: " + userId);
+        log.info("Fetching history for user: {}", userId);
+        
+        if (userId != null && !userId.equals("test-user-id") && !userRepository.existsById(userId)) {
+             User newUser = User.builder()
+                        .id(userId)
+                        .username("user-" + userId.substring(0, 8))
+                        .createdAt(java.time.LocalDateTime.now())
+                        .build();
+                userRepository.save(newUser);
+        }
+
         return contentRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::mapToResponse)
