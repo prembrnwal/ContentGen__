@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Bell } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
@@ -28,8 +29,10 @@ function Toast({ msg, show }) {
   );
 }
 
-export default function AppPage({ user, setUser, setPage }) {
-  const [tab, setTab] = useState("generate");
+export default function AppPage({ user, setUser, setPage, defaultTab = "generate" }) {
+  const navigate = useNavigate();
+  const tab = defaultTab;
+  const setTab = (t) => navigate('/' + t);
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [sessionCount, setSessionCount] = useState(0);
