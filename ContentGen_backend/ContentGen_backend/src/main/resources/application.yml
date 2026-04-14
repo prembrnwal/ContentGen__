@@ -24,9 +24,9 @@ spring:
   # 2. Select JDBC and check "Use connection pooling" (Port 6543)
   # 3. Update the URL and username below with the pooling values:
   datasource:
-    url: jdbc:postgresql://aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres?sslmode=require
-    username: postgres.fnlqwxouzymlntraktjs
-    password: p1r2e3m@123
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -59,7 +59,7 @@ server:
 
 gemini:
   api:
-    key: AIzaSyBosAL4KmU4xJKfhkFt1WalhMBM-SbDQI0
+    key: ${GEMINI_API_KEY}
 
 # AI Prompts
 ai:
