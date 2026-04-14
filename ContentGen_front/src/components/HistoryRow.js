@@ -41,7 +41,7 @@ export default function HistoryRow({ item, onCopy, onReuse, onDelete, onView, on
 
       <div className="flex-1 min-w-0 pr-4">
         <h4 className="text-base font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis mb-1">
-          {item.title || item.prompt}
+          {item.title || item.hook || item.prompt}
         </h4>
         <div className="flex flex-wrap items-center gap-2">
           <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-white/5 text-textMuted border border-white/10">
