@@ -22,6 +22,22 @@ public class ContentResponse {
     private String rawJsonResponse;
     private Integer qualityScore;
     
+    // New fields for varied AI modes
+    private String hook;
+    private String script;
+    private String visual;
+    private String audio;
+    private String viralReason;
+    private String seoIntro;
+    private List<java.util.Map<String, String>> headings; // For Blog mode
+    private List<String> steps; // For Education mode
+    private String problem; // For Marketing mode
+    private String solution;
+    private List<String> benefits;
+    private String cta;
+    private String story; // For Story mode
+    private String ending;
+
     // Additional fields mapped for FE
     private String topic;
     private String template;

@@ -7,10 +7,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "contents")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = {"keyPoints", "keywords"})
+@EqualsAndHashCode(exclude = {"keyPoints", "keywords"})
 public class Content {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -41,6 +43,48 @@ public class Content {
 
     @Column(columnDefinition="TEXT")
     private String summary;
+
+    @Column(columnDefinition="TEXT")
+    private String hook;
+
+    @Column(columnDefinition="TEXT")
+    private String script;
+
+    @Column(columnDefinition="TEXT")
+    private String visual;
+
+    @Column(columnDefinition="TEXT")
+    private String audio;
+
+    @Column(columnDefinition="TEXT")
+    private String viralReason;
+
+    @Column(columnDefinition="TEXT")
+    private String seoIntro;
+
+    @Column(columnDefinition="TEXT")
+    private String story;
+
+    @Column(columnDefinition="TEXT")
+    private String ending;
+
+    @Column(columnDefinition="TEXT")
+    private String problem;
+
+    @Column(columnDefinition="TEXT")
+    private String solution;
+
+    @Column(columnDefinition="TEXT")
+    private String cta;
+
+    @Column(columnDefinition="TEXT")
+    private String stepsJson; // Serialized list of steps
+
+    @Column(columnDefinition="TEXT")
+    private String benefitsJson; // Serialized list of benefits
+
+    @Column(columnDefinition="TEXT")
+    private String headingsJson; // Serialized list of headings (h2/content)
 
     @Column(columnDefinition="TEXT")
     private String rawJsonResponse;

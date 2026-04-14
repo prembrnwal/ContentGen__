@@ -5,10 +5,12 @@ import lombok.*;
 
 @Entity
 @Table(name = "content_keywords")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = "content")
+@EqualsAndHashCode(exclude = "content")
 public class ContentKeyword {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
