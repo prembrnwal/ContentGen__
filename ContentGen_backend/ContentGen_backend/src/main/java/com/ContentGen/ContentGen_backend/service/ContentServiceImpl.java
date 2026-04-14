@@ -32,11 +32,16 @@ public class ContentServiceImpl implements ContentService {
 
     private final ContentRepository contentRepository;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final com.ContentGen.ContentGen_backend.config.AiPromptProperties aiPromptProperties;
 
     @Value("${gemini.api.key}")
     private String geminiApiKey;
+
+    @Value("${gemini.model:gemini-3-flash-preview}")
+    private String geminiModel;
+
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @PostConstruct
     public void init() {
@@ -63,25 +68,32 @@ public class ContentServiceImpl implements ContentService {
     )
     @Override
     public List<ContentResponse> generateContent(ContentGenerateRequest request) {
-        log.info("Generating content for topic: {} using template: {}", request.getTopic(), request.getTemplate());
+        log.info("[GENERATE] Topic: '{}', Template: '{}', Ideas: {}", request.getTopic(), request.getTemplate(), request.getNumberOfIdeas());
 
         String validUserId = "anon";
         if (request.getUserId() != null) {
             validUserId = request.getUserId();
-            if (!userRepository.existsById(validUserId)) {
-                log.info("[User Sync] Creating new user record for ID: {}", validUserId);
-                User newUser = User.builder()
-                        .id(validUserId)
-                        .username("user-" + validUserId.substring(0, 8))
-                        .createdAt(java.time.LocalDateTime.now())
-                        .build();
-                userRepository.save(newUser);
+            try {
+                if (!userRepository.existsById(validUserId)) {
+                    log.info("[User Sync] Attempting to create user: {}", validUserId);
+                    User newUser = User.builder()
+                            .id(validUserId)
+                            .username("user-" + (validUserId.length() > 8 ? validUserId.substring(0, 8) : validUserId))
+                            .createdAt(java.time.LocalDateTime.now())
+                            .build();
+                    userRepository.save(newUser);
+                    log.info("[User Sync] User created successfully.");
+                }
+            } catch (Exception e) {
+                log.warn("[User Sync Warning] Could NOT sync user: {}. Proceeding as anon. Error: {}", validUserId, e.getMessage());
+                validUserId = "anon"; // Fallback to anon if sync fails
             }
         }
 
         int numIdeas = request.getNumberOfIdeas() != null ? request.getNumberOfIdeas() : 1;
         String generatedText = "[]";
 
+        log.info("[Logic] Starting Gemini preparation for user: {}", validUserId);
         try (Client client = Client.builder().apiKey(geminiApiKey).build()) {
             String fullPrompt = aiPromptProperties.getGenerate()
                     .replace("{numIdeas}", String.valueOf(numIdeas))
@@ -91,20 +103,29 @@ public class ContentServiceImpl implements ContentService {
                     .replace("{platform}", request.getPlatform() != null ? request.getPlatform() : "")
                     .replace("{audience}", request.getAudience() != null ? request.getAudience() : "");
 
-            GenerateContentResponse response = callGeminiWithRetry(client, "gemini-3-flash-preview", fullPrompt);
-
+            log.info("[Gemini] Calling API for {} ideas...", numIdeas);
+            GenerateContentResponse response = callGeminiWithRetry(client, geminiModel, fullPrompt);
+            
             generatedText = response.text().replace("```json", "").replace("```", "").trim();
+            log.info("[Gemini] Received response (length: {})", generatedText.length());
+            log.debug("--- RAW AI OUTPUT START ---");
+            log.debug(generatedText);
+            log.debug("--- RAW AI OUTPUT END ---");
+
             if (!generatedText.startsWith("[")) {
                 generatedText = "[" + generatedText + "]";
             }
         } catch (Exception e) {
-            log.error("Gemini API call failed: {}", e.getMessage(), e);
-            throw new RuntimeException("Error generating content: " + e.getMessage());
+            log.error("[GENERATE ERROR] Gemini failed: {}", e.getMessage());
+            throw new RuntimeException("AI Generation Failed: " + e.getMessage());
         }
 
         List<ContentResponse> generatedOutput = new ArrayList<>();
         try {
+            log.info("[JSON] Parsing ideas...");
             List<ContentResponse> parsedIdeas = objectMapper.readValue(generatedText, new TypeReference<List<ContentResponse>>() {});
+            log.info("[JSON] Parsed {} ideas from AI output.", parsedIdeas.size());
+            
             int index = 1;
             for (ContentResponse idea : parsedIdeas) {
                 Content content = Content.builder()
@@ -121,31 +142,50 @@ public class ContentServiceImpl implements ContentService {
                         .numberOfIdeas(numIdeas)
                         .ideaIndex(index)
                         .rawJsonResponse(generatedText)
+                        .hook(idea.getHook())
+                        .script(idea.getScript())
+                        .visual(idea.getVisual())
+                        .audio(idea.getAudio())
+                        .viralReason(idea.getViralReason())
+                        .seoIntro(idea.getSeoIntro())
+                        .story(idea.getStory())
+                        .ending(idea.getEnding())
+                        .problem(idea.getProblem())
+                        .solution(idea.getSolution())
+                        .cta(idea.getCta())
                         .build();
 
-                // Convert String lists to Entity lists
-                Content finalContent = content; // for lambda
+                // Serialize specialized collections
+                try {
+                    if (idea.getSteps() != null) content.setStepsJson(objectMapper.writeValueAsString(idea.getSteps()));
+                    if (idea.getBenefits() != null) content.setBenefitsJson(objectMapper.writeValueAsString(idea.getBenefits()));
+                    if (idea.getHeadings() != null) content.setHeadingsJson(objectMapper.writeValueAsString(idea.getHeadings()));
+                } catch (Exception e) {
+                    log.warn("Serialization of specialized fields failed for idea {}", index);
+                }
+
                 if (idea.getKeyPoints() != null) {
                     content.setKeyPoints(idea.getKeyPoints().stream()
-                            .map(p -> ContentKeyPoint.builder().point(p).content(finalContent).build())
+                            .map(p -> ContentKeyPoint.builder().point(p).content(content).build())
                             .collect(java.util.stream.Collectors.toList()));
                 }
                 if (idea.getKeywords() != null) {
                     content.setKeywords(idea.getKeywords().stream()
-                            .map(k -> ContentKeyword.builder().keyword(k).content(finalContent).build())
+                            .map(k -> ContentKeyword.builder().keyword(k).content(content).build())
                             .collect(java.util.stream.Collectors.toList()));
                 }
 
+                log.info("[DB] Saving idea {}/{}...", index, parsedIdeas.size());
                 contentRepository.save(content);
                 generatedOutput.add(mapToResponse(content));
                 index++;
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to parse JSON response");
+            log.error("[JSON/DB ERROR] Mapping failed: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to process generated content: " + e.getMessage());
         }
 
-        log.info("Successfully generated and saved {} content ideas for topic: {}", generatedOutput.size(), request.getTopic());
+        log.info("[SUCCESS] Generated {} items.", generatedOutput.size());
         return generatedOutput;
     }
 
@@ -195,10 +235,10 @@ public class ContentServiceImpl implements ContentService {
     })
     @Override
     public ContentResponse regenerateContent(String id, ContentRegenerateRequest request) {
-        System.out.println("[Cache EVICT] Cleared generate + history caches after regenerate based on id=" + id);
+        log.info("[REGENERATE] Based on content ID: {}", id);
 
         Content oldContent = contentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Content not found"));
+                .orElseThrow(() -> new RuntimeException("Content not found: " + id));
 
         Content newEntity = new Content();
         newEntity.setPrompt(request.getTopic() != null ? request.getTopic() : oldContent.getPrompt());
@@ -217,15 +257,20 @@ public class ContentServiceImpl implements ContentService {
                     .replace("{platform}", newEntity.getPlatform() != null ? newEntity.getPlatform() : "")
                     .replace("{audience}", newEntity.getAudience() != null ? newEntity.getAudience() : "");
 
-            GenerateContentResponse response = callGeminiWithRetry(client, "gemini-3-flash-preview", fullPrompt);
+            log.info("[Gemini] Requesting regeneration...");
+            GenerateContentResponse response = callGeminiWithRetry(client, geminiModel, fullPrompt);
 
             generatedText = response.text().replace("```json", "").replace("```", "").trim();
+            log.debug("--- RAW REGENERATE OUTPUT START ---");
+            log.debug(generatedText);
+            log.debug("--- RAW REGENERATE OUTPUT END ---");
+
             if (!generatedText.startsWith("[")) {
                 generatedText = "[" + generatedText + "]";
             }
 
             List<ContentResponse> parsedIdeas = objectMapper.readValue(generatedText, new TypeReference<List<ContentResponse>>() {});
-            if (!parsedIdeas.isEmpty()) {
+            if (parsedIdeas != null && !parsedIdeas.isEmpty()) {
                 ContentResponse idea = parsedIdeas.get(0);
                 newEntity.setTitle(idea.getTitle());
                 newEntity.setIntroduction(idea.getIntroduction());
@@ -242,12 +287,42 @@ public class ContentServiceImpl implements ContentService {
                             .map(k -> ContentKeyword.builder().keyword(k).content(newEntity).build())
                             .collect(java.util.stream.Collectors.toList()));
                 }
+            } else {
+                log.warn("[REGENERATE] AI returned empty list.");
+                throw new RuntimeException("AI failed to provide a new version.");
             }
 
             newEntity.setRawJsonResponse(generatedText);
-            return mapToResponse(contentRepository.save(newEntity));
+            
+            // Map specialized fields for regeneration
+            if (!parsedIdeas.isEmpty()) {
+                ContentResponse idea = parsedIdeas.get(0);
+                newEntity.setHook(idea.getHook());
+                newEntity.setScript(idea.getScript());
+                newEntity.setVisual(idea.getVisual());
+                newEntity.setAudio(idea.getAudio());
+                newEntity.setViralReason(idea.getViralReason());
+                newEntity.setSeoIntro(idea.getSeoIntro());
+                newEntity.setStory(idea.getStory());
+                newEntity.setEnding(idea.getEnding());
+                newEntity.setProblem(idea.getProblem());
+                newEntity.setSolution(idea.getSolution());
+                newEntity.setCta(idea.getCta());
+                
+                try {
+                    if (idea.getSteps() != null) newEntity.setStepsJson(objectMapper.writeValueAsString(idea.getSteps()));
+                    if (idea.getBenefits() != null) newEntity.setBenefitsJson(objectMapper.writeValueAsString(idea.getBenefits()));
+                    if (idea.getHeadings() != null) newEntity.setHeadingsJson(objectMapper.writeValueAsString(idea.getHeadings()));
+                } catch (Exception e) {
+                    log.warn("Serialization failed during regeneration");
+                }
+            }
+            
+            Content saved = contentRepository.save(newEntity);
+            log.info("[REGENERATE SUCCESS] New content saved with ID: {}", saved.getId());
+            return mapToResponse(saved);
         } catch (Exception e) {
-            System.err.println("Error in regenerateContent: " + e.getMessage());
+            log.error("[REGENERATE ERROR] Failed: {}", e.getMessage(), e);
             throw new RuntimeException("Regeneration failed: " + e.getMessage());
         }
     }
@@ -288,7 +363,7 @@ public class ContentServiceImpl implements ContentService {
     }
 
     private ContentResponse mapToResponse(Content content) {
-        return ContentResponse.builder()
+        ContentResponse res = ContentResponse.builder()
                 .id(content.getId())
                 .title(content.getTitle())
                 .introduction(content.getIntroduction())
@@ -309,7 +384,35 @@ public class ContentServiceImpl implements ContentService {
                 .numberOfIdeas(content.getNumberOfIdeas())
                 .ideaIndex(content.getIdeaIndex())
                 .ts(content.getCreatedAt() != null ? content.getCreatedAt().toString() : null)
-                .preview(content.getIntroduction())
+                .preview(content.getIntroduction() != null ? content.getIntroduction() : content.getHook())
+                .hook(content.getHook())
+                .script(content.getScript())
+                .visual(content.getVisual())
+                .audio(content.getAudio())
+                .viralReason(content.getViralReason())
+                .seoIntro(content.getSeoIntro())
+                .story(content.getStory())
+                .ending(content.getEnding())
+                .problem(content.getProblem())
+                .solution(content.getSolution())
+                .cta(content.getCta())
                 .build();
+
+        // Deserialize specialized collections
+        try {
+            if (content.getStepsJson() != null) {
+                res.setSteps(objectMapper.readValue(content.getStepsJson(), new TypeReference<List<String>>() {}));
+            }
+            if (content.getBenefitsJson() != null) {
+                res.setBenefits(objectMapper.readValue(content.getBenefitsJson(), new TypeReference<List<String>>() {}));
+            }
+            if (content.getHeadingsJson() != null) {
+                res.setHeadings(objectMapper.readValue(content.getHeadingsJson(), new TypeReference<List<java.util.Map<String, String>>>() {}));
+            }
+        } catch (Exception e) {
+            log.warn("Deserialization of specialized fields failed for content {}", content.getId());
+        }
+
+        return res;
     }
 }
