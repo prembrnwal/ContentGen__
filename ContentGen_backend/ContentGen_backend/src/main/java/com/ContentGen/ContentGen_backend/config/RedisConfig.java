@@ -33,7 +33,33 @@ import java.util.Map;
  */
 @Configuration
 @EnableCaching
-public class RedisConfig {
+public class RedisConfig implements org.springframework.cache.annotation.CachingConfigurer {
+
+    @Override
+    public org.springframework.cache.interceptor.CacheErrorHandler errorHandler() {
+        return new org.springframework.cache.interceptor.CacheErrorHandler() {
+            @Override
+            public void handleCacheGetError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
+                System.err.println("Redis Cache GET Error [" + cache.getName() + "]: " + exception.getMessage());
+            }
+
+            @Override
+            public void handleCachePutError(RuntimeException exception, org.springframework.cache.Cache cache, Object key, Object value) {
+                System.err.println("Redis Cache PUT Error [" + cache.getName() + "]: " + exception.getMessage());
+            }
+
+            @Override
+            public void handleCacheEvictError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
+                System.err.println("Redis Cache EVICT Error [" + cache.getName() + "]: " + exception.getMessage());
+            }
+
+            @Override
+            public void handleCacheClearError(RuntimeException exception, org.springframework.cache.Cache cache) {
+                System.err.println("Redis Cache CLEAR Error [" + cache.getName() + "]: " + exception.getMessage());
+            }
+        };
+    }
+
 
     /**
      * ObjectMapper with a STRICT PolymorphicTypeValidator.

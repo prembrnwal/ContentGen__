@@ -28,16 +28,23 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
         String key = resolveKey(request);
         String redisKey = "rate_limit:" + key;
 
-        Long count = redisTemplate.opsForValue().increment(redisKey);
-        
-        if (count == null) return true;
+        try {
+            Long count = redisTemplate.opsForValue().increment(redisKey);
+            
+            if (count == null) return true;
 
-        if (count == 1) {
-            redisTemplate.expire(redisKey, WINDOW);
-        }
+            if (count == 1) {
+                redisTemplate.expire(redisKey, WINDOW);
+            }
 
-        if (count > MAX_REQUESTS) {
-            throw new RateLimitException("You have exceeded the rate limit of " + MAX_REQUESTS + " requests per minute. Please try again later.");
+            if (count > MAX_REQUESTS) {
+                throw new RateLimitException("You have exceeded the rate limit of " + MAX_REQUESTS + " requests per minute. Please try again later.");
+            }
+        } catch (RateLimitException e) {
+            throw e; // Rethrow expected rate limit exceptions
+        } catch (Exception e) {
+            // Log the error but allow the request to proceed (resilience over strict limiting)
+            System.err.println("[RateLimit] Redis error: " + e.getMessage() + ". Skipping rate limit check.");
         }
 
         return true;
