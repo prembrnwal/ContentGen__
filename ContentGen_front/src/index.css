@@ -41,3 +41,25 @@
     @apply bg-gray-600;
   }
 }
+
+/* Global Application Settings Override Classes */
+body.font-manrope {
+  font-family: 'Manrope', sans-serif !important;
+}
+body.font-manrope h1, body.font-manrope h2, body.font-manrope h3, body.font-manrope h4, body.font-manrope h5, body.font-manrope h6, body.font-manrope .font-display {
+  font-family: 'Poppins', sans-serif !important;
+}
+body.high-contrast {
+  filter: contrast(1.2) saturate(1.1);
+}
+body.no-hover * {
+  transition-duration: 0s !important;
+  animation-duration: 0.01s !important;
+}
+body.theme-light {
+  filter: invert(1) hue-rotate(180deg);
+  background: white;
+}
+body.theme-light img, body.theme-light svg:not(.lucide), body.theme-light video {
+  filter: invert(1) hue-rotate(180deg);
+}
