@@ -26,13 +26,16 @@ public class ContentController {
     public ResponseEntity<List<ContentResponse>> generateContent(
             @Valid @RequestBody ContentGenerateRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        // Extract Supabase User ID if present, otherwise fallback for testing
-        if (jwt != null) {
-            request.setUserId(jwt.getSubject());
-        } else if (request.getUserId() == null) {
-            request.setUserId("test-user-id");
-        }
-        return ResponseEntity.ok(contentService.generateContent(request));
+        
+        String userId = (jwt != null) ? jwt.getSubject() : (request.getUserId() != null ? request.getUserId() : "test-user-id");
+        request.setUserId(userId);
+        
+        System.out.println("[CONTROLLER] Received /generate request for user: " + userId);
+        
+        List<ContentResponse> result = contentService.generateContent(request);
+        System.out.println("[CONTROLLER] Returning " + result.size() + " ideas.");
+        
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/history")
