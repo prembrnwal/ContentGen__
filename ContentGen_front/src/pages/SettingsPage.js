@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
 import { Settings, Moon, Sun, Monitor, Type, Palette, Layout, Save } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function SettingsPage({ showToast }) {
   const [theme, setTheme] = useState("dark");
   const [font, setFont] = useState("inter");
-  const [accent, setAccent] = useState("blue");
+  const [hoverEnabled, setHoverEnabled] = useState(true);
+  const [highContrast, setHighContrast] = useState(false);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -16,8 +17,28 @@ export default function SettingsPage({ showToast }) {
     visible: { y: 0, opacity: 1 }
   };
 
+  useEffect(() => {
+    // Load existing settings
+    try {
+      const savedSettings = JSON.parse(localStorage.getItem('cg_settings') || '{}');
+      if (savedSettings.theme) setTheme(savedSettings.theme);
+      if (savedSettings.font) setFont(savedSettings.font);
+      if (savedSettings.hoverEnabled !== undefined) setHoverEnabled(savedSettings.hoverEnabled);
+      if (savedSettings.highContrast !== undefined) setHighContrast(savedSettings.highContrast);
+    } catch(e){}
+  }, []);
+
   const saveSettings = () => {
-    // In a real app, this would persist to a database or localStorage
+    const settings = { theme, font, hoverEnabled, highContrast };
+    localStorage.setItem('cg_settings', JSON.stringify(settings));
+    
+    // Apply classes globally
+    document.body.classList.remove('theme-light', 'font-manrope', 'no-hover', 'high-contrast');
+    if (theme === 'light') document.body.classList.add('theme-light');
+    if (font === 'manrope') document.body.classList.add('font-manrope');
+    if (!hoverEnabled) document.body.classList.add('no-hover');
+    if (highContrast) document.body.classList.add('high-contrast');
+
     showToast("Preferences saved successfully!");
   };
 
@@ -105,23 +126,37 @@ export default function SettingsPage({ showToast }) {
           </div>
 
           <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 rounded-xl border border-darkBorder bg-darkBg">
+            <div 
+              onClick={() => setHoverEnabled(!hoverEnabled)}
+              className="flex items-center justify-between p-4 rounded-xl border border-darkBorder bg-darkBg cursor-pointer hover:border-white/10 transition-colors"
+            >
               <div>
                 <div className="font-semibold text-white">Enable Hover Animations</div>
                 <div className="text-xs text-textMuted">Disable for maximum performance on older devices</div>
               </div>
-              <div className="w-12 h-6 bg-primaryAccent rounded-full relative cursor-pointer">
-                <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
+              <div className={`w-12 h-6 rounded-full relative transition-colors ${hoverEnabled ? 'bg-primaryAccent' : 'bg-darkSurface border border-darkBorder'}`}>
+                <motion.div 
+                  className={`absolute top-1 w-4 h-4 rounded-full ${hoverEnabled ? 'bg-white' : 'bg-textMuted'}`}
+                  animate={{ left: hoverEnabled ? '26px' : '4px' }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-xl border border-darkBorder bg-darkBg">
+            <div 
+              onClick={() => setHighContrast(!highContrast)}
+              className="flex items-center justify-between p-4 rounded-xl border border-darkBorder bg-darkBg cursor-pointer hover:border-white/10 transition-colors"
+            >
               <div>
                 <div className="font-semibold text-white">High Contrast UI</div>
                 <div className="text-xs text-textMuted">Increases border visibility and text brightness</div>
               </div>
-              <div className="w-12 h-6 bg-darkSurface border border-darkBorder rounded-full relative cursor-pointer">
-                <div className="absolute left-1 top-1 w-4 h-4 bg-textMuted rounded-full" />
+              <div className={`w-12 h-6 rounded-full relative transition-colors ${highContrast ? 'bg-primaryAccent' : 'bg-darkSurface border border-darkBorder'}`}>
+                <motion.div 
+                  className={`absolute top-1 w-4 h-4 rounded-full ${highContrast ? 'bg-white' : 'bg-textMuted'}`}
+                  animate={{ left: highContrast ? '26px' : '4px' }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
               </div>
             </div>
           </div>
