@@ -37,6 +37,11 @@ public class ContentController {
         
         return ResponseEntity.ok(result);
     }
+    @GetMapping("/")
+    public String home(){
+        return "hello";
+    }
+
 
     @GetMapping("/history")
     public ResponseEntity<List<ContentResponse>> getHistory(@AuthenticationPrincipal Jwt jwt) {
