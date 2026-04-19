@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, Copy, RefreshCw, ChevronDown, CheckCircle2, Wand2, FileText, Mail, Megaphone, Share2, Box, Network, Check } from 'lucide-react';
 import { TEMPLATES, TONES, TONE_HINTS, PLATFORMS, AUDIENCES, NUMBER_OF_IDEAS_OPTIONS } from '../constants/theme';
 import { supabase } from '../supabase';
+import { copyToClipboard, buildContentText } from '../utils/copyToClipboard';
 
 // ─── Icon map per template ─────────────────────────────────────────────────
 const TEMPLATE_ICONS = {
@@ -160,45 +161,10 @@ export default function GeneratePage({
     setLoading(false);
   }
 
-  function copyOutput(item) {
-    let txt = "";
-    if (item.hook) txt += `Hook: ${item.hook}\n\n`;
-    if (item.title) txt += `Title: ${item.title}\n\n`;
-    if (item.introduction) txt += `${item.introduction}\n\n`;
-    if (item.script) txt += `Script: ${item.script}\n\n`;
-    if (item.visual) txt += `Visual: ${item.visual}\n\n`;
-    if (item.audio) txt += `Audio: ${item.audio}\n\n`;
-    if (item.story) txt += `Story: ${item.story}\n\n`;
-    
-    if (Array.isArray(item.headings)) {
-      item.headings.forEach(h => {
-        txt += `## ${h.h2 || h.heading}\n${h.content}\n\n`;
-      });
-    }
-
-    if (Array.isArray(item.steps)) {
-      txt += "Steps:\n";
-      item.steps.forEach((s, idx) => { txt += `${idx + 1}. ${s}\n`; });
-      txt += "\n";
-    }
-
-    if (Array.isArray(item.keyPoints)) {
-      txt += "Key Points:\n";
-      item.keyPoints.forEach(p => { txt += `• ${p}\n`; });
-      txt += "\n";
-    }
-
-    if (item.conclusion) txt += `Conclusion: ${item.conclusion}\n\n`;
-    if (item.keywords?.length) txt += `Keywords: ${item.keywords.join(", ")}`;
-
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(txt).then(() => showToast("Copied to clipboard"));
-    } else {
-      const ta = document.createElement("textarea");
-      ta.value = txt; document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); showToast("Copied to clipboard"); } catch { showToast("Copy failed"); }
-      document.body.removeChild(ta);
-    }
+  async function copyOutput(item) {
+    const txt = buildContentText(item);
+    const success = await copyToClipboard(txt);
+    showToast(success ? "Copied to clipboard" : "Copy failed");
   }
 
   // Helper to render specialized sections
