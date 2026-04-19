@@ -43,3 +43,9 @@ src/main/resources/application.yml
 ### JVM Crash Logs ###
 hs_err_pid*.log
 replay_pid*.log
+
+### General Logs ###
+*.log
+
+### Node (if any tooling) ###
+node_modules/
