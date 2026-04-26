@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, Copy, RefreshCw, ChevronDown, CheckCircle2, Wand2, FileText, Mail, Megaphone, Share2, Box, Network, Check } from 'lucide-react';
 import { TEMPLATES, TONES, TONE_HINTS, PLATFORMS, AUDIENCES, NUMBER_OF_IDEAS_OPTIONS } from '../constants/theme';
-import { supabase } from '../supabase';
 import { copyToClipboard, buildContentText } from '../utils/copyToClipboard';
 
 // ─── Icon map per template ─────────────────────────────────────────────────
@@ -105,8 +104,16 @@ function CustomSelect({ value, onChange, options }) {
 }
 
 export default function GeneratePage({
-  history, setHistory, setTab, showToast, onGenerated,
+  history, setHistory, setTab, showToast,
   initialPrompt = "", initialTemplate = "Blog", initialTone = "Professional",
+  // Lifted generation state & handlers from AppPage
+  loading = false,
+  outputs = [],
+  validErr = false,
+  setValidErr = () => {},
+  regeneratingId = null,
+  onGenerate,
+  onRegenerate,
 }) {
   const [topic, setTopic] = useState(initialPrompt);
   const [template, setTemplate] = useState(initialTemplate);
@@ -114,51 +121,16 @@ export default function GeneratePage({
   const [platform, setPlatform] = useState("General");
   const [audience, setAudience] = useState("General Public");
   const [numberOfIdeas, setNumberOfIdeas] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [regeneratingId, setRegeneratingId] = useState(null);
-  const [outputs, setOutputs] = useState([]);
-  const [validErr, setValidErr] = useState(false);
   const outputRef = useRef(null);
 
-  async function generate(overrides = {}) {
+  function generate(overrides = {}) {
     const p = overrides.topic ?? topic;
     const tmpl = overrides.template ?? template;
     const tn = overrides.tone ?? tone;
     const plt = overrides.platform ?? platform;
     const aud = overrides.audience ?? audience;
     const numIdeas = overrides.numberOfIdeas ?? numberOfIdeas;
-
-    if (!p.trim()) { setValidErr(true); return; }
-    setValidErr(false); setLoading(true); setOutputs([]);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { showToast("Session expired. Please log in again."); return; }
-
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/content/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ topic: p, template: tmpl, tone: tn, platform: plt, audience: aud, numberOfIdeas: numIdeas }),
-      });
-
-      if (!res.ok) throw new Error("Failed to generate content");
-      const parsed = await res.json();
-      const entries = parsed.map((idea, idx) => ({
-        ...idea,
-        ts: idea.ts ? new Date(idea.ts) : new Date(),
-        id: idea.id || Date.now() + idx,
-      }));
-
-      setOutputs(entries);
-      setHistory(h => [...entries.reverse(), ...h]);
-      if (onGenerated) onGenerated(entries.length);
-      setTimeout(() => outputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-    } catch (err) {
-      console.error(err);
-      showToast("Generation failed. Please retry.");
-    }
-    setLoading(false);
+    onGenerate({ topic: p, template: tmpl, tone: tn, platform: plt, audience: aud, numberOfIdeas: numIdeas });
   }
 
   async function copyOutput(item) {
@@ -166,6 +138,13 @@ export default function GeneratePage({
     const success = await copyToClipboard(txt);
     showToast(success ? "Copied to clipboard" : "Copy failed");
   }
+
+  // Scroll to outputs when they arrive
+  useEffect(() => {
+    if (outputs.length > 0) {
+      setTimeout(() => outputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    }
+  }, [outputs]);
 
   // Helper to render specialized sections
   const Section = ({ title, icon: Icon, color, children }) => (
@@ -320,26 +299,7 @@ export default function GeneratePage({
 
 
   async function regenerateOutput(output) {
-    setRegeneratingId(output.id);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/content/regenerate/${output.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ topic: output.topic, template: output.template, tone: output.tone, platform: output.platform, audience: output.audience }),
-      });
-      if (!res.ok) throw new Error("Regeneration failed");
-      const updated = await res.json();
-      const newEntry = { ...updated, ts: new Date(), prompt: updated.prompt || updated.topic };
-      setOutputs(prev => [newEntry, ...prev]);
-      setHistory(h => [newEntry, ...h]);
-      showToast("Content regenerated! New version added to history.");
-    } catch (err) {
-      console.error(err);
-      showToast("Regeneration failed. Please retry.");
-    }
-    setRegeneratingId(null);
+    onRegenerate(output);
   }
 
   const containerVariants = {
