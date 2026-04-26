@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Sparkles, Clock, LogOut, BrainCircuit, User, Settings } from 'lucide-react';
 import ProfileModal from './ProfileModal';
 
-function SideItem({ icon: IconComponent, label, active, onClick, badge }) {
+function SideItem({ icon: IconComponent, label, active, onClick, badge, isLoading }) {
   const [hov, setHov] = useState(false);
   return (
     <div
@@ -18,7 +18,13 @@ function SideItem({ icon: IconComponent, label, active, onClick, badge }) {
     >
       <IconComponent size={18} className={active ? 'text-primaryAccent' : hov ? 'text-white' : 'text-textMuted'} />
       <span className="flex-1 text-sm">{label}</span>
-      {badge != null && badge > 0 && (
+      {isLoading && (
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiaryAccent opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-tertiaryAccent" />
+        </span>
+      )}
+      {!isLoading && badge != null && badge > 0 && (
         <span className="bg-primaryAccent text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg shadow-primaryAccent/20">
           {badge}
         </span>
@@ -27,7 +33,7 @@ function SideItem({ icon: IconComponent, label, active, onClick, badge }) {
   );
 }
 
-export default function Sidebar({ tab, setTab, history, user, setUser, setPage }) {
+export default function Sidebar({ tab, setTab, history, user, setUser, setPage, genLoading }) {
   const [showProfile, setShowProfile] = useState(false);
 
   return (
@@ -69,7 +75,7 @@ export default function Sidebar({ tab, setTab, history, user, setUser, setPage }
       <div className="p-4 flex-1 space-y-1 overflow-y-auto custom-scrollbar">
         <div className="text-[10px] font-bold tracking-widest uppercase text-textMuted/70 px-4 pb-2 pt-2">Menu</div>
         <SideItem icon={LayoutDashboard} label="Dashboard" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
-        <SideItem icon={Sparkles} label="Generator" active={tab === "generate"} onClick={() => setTab("generate")} />
+        <SideItem icon={Sparkles} label="Generator" active={tab === "generate"} onClick={() => setTab("generate")} isLoading={genLoading} />
         <SideItem icon={Clock} label="History" active={tab === "history"} onClick={() => setTab("history")} badge={history.length} />
         <SideItem icon={Settings} label="Settings" active={tab === "settings"} onClick={() => setTab("settings")} />
       </div>
