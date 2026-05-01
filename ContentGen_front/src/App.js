@@ -8,6 +8,7 @@ import AppPage from './pages/AppPage';
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -25,6 +26,7 @@ export default function App() {
       if (session?.user) {
         setUser(session.user.email?.split("@")[0] || "User");
       }
+      setLoading(false);
     });
 
     // Listen for auth changes
@@ -34,6 +36,7 @@ export default function App() {
       } else {
         setUser(null);
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -47,6 +50,14 @@ export default function App() {
 
   const isAppRoute = ['/dashboard', '/generate', '/history', '/settings'].includes(location.pathname);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-darkBg flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primaryAccent border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-darkBg text-textMain font-sans overflow-x-hidden selection:bg-primaryAccent selection:text-white">
       {!isAppRoute && <Header setPage={setPage} user={user} setUser={setUser} />}
@@ -54,10 +65,10 @@ export default function App() {
         <Route path="/" element={<LandingPage setPage={setPage} />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage setPage={setPage} setUser={setUser} />} />
         <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage setPage={setPage} setUser={setUser} />} />
-        <Route path="/dashboard" element={<AppPage user={user} setUser={setUser} setPage={setPage} defaultTab="dashboard" />} />
-        <Route path="/generate" element={<AppPage user={user} setUser={setUser} setPage={setPage} defaultTab="generate" />} />
-        <Route path="/history" element={<AppPage user={user} setUser={setUser} setPage={setPage} defaultTab="history" />} />
-        <Route path="/settings" element={<AppPage user={user} setUser={setUser} setPage={setPage} defaultTab="settings" />} />
+        <Route path="/dashboard" element={user ? <AppPage user={user} setUser={setUser} setPage={setPage} defaultTab="dashboard" /> : <Navigate to="/login" replace />} />
+        <Route path="/generate" element={user ? <AppPage user={user} setUser={setUser} setPage={setPage} defaultTab="generate" /> : <Navigate to="/login" replace />} />
+        <Route path="/history" element={user ? <AppPage user={user} setUser={setUser} setPage={setPage} defaultTab="history" /> : <Navigate to="/login" replace />} />
+        <Route path="/settings" element={user ? <AppPage user={user} setUser={setUser} setPage={setPage} defaultTab="settings" /> : <Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
