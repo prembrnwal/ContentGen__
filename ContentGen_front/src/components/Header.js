@@ -1,5 +1,6 @@
 import { BrainCircuit, Sparkles, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '../supabase';
 
 export default function Header({ setPage, user, setUser }) {
   return (
@@ -33,7 +34,11 @@ export default function Header({ setPage, user, setUser }) {
               Welcome, <span className="text-textMain">{user.split('@')[0]}</span>
             </span>
             <button
-              onClick={() => { setUser(null); setPage("landing"); }}
+              onClick={async () => {
+                try { await supabase.auth.signOut(); } catch (e) { console.error(e); }
+                setUser(null);
+                setPage("landing");
+              }}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-textMuted hover:text-white hover:bg-darkBorder/50 transition-colors"
             >
               <LogOut size={16} />

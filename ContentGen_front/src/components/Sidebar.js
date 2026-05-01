@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Sparkles, Clock, LogOut, BrainCircuit, User, Settings } from 'lucide-react';
 import ProfileModal from './ProfileModal';
+import { supabase } from '../supabase';
 
 function SideItem({ icon: IconComponent, label, active, onClick, badge, isLoading }) {
   const [hov, setHov] = useState(false);
@@ -35,6 +36,16 @@ function SideItem({ icon: IconComponent, label, active, onClick, badge, isLoadin
 
 export default function Sidebar({ tab, setTab, history, user, setUser, setPage, genLoading }) {
   const [showProfile, setShowProfile] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error(e);
+    }
+    setUser(null);
+    setPage("landing");
+  };
 
   return (
     <div className="w-[260px] shrink-0 bg-darkSurface border-r border-darkBorder flex flex-col h-screen sticky top-0 z-40">
@@ -95,7 +106,7 @@ export default function Sidebar({ tab, setTab, history, user, setUser, setPage, 
 
       {/* Logout */}
       <div className="p-4 border-t border-darkBorder/50">
-        <SideItem icon={LogOut} label="Log out" onClick={() => { setUser(null); setPage("landing"); }} />
+        <SideItem icon={LogOut} label="Log out" onClick={handleLogout} />
       </div>
 
       <ProfileModal 
@@ -103,7 +114,7 @@ export default function Sidebar({ tab, setTab, history, user, setUser, setPage, 
         onClose={() => setShowProfile(false)} 
         user={user} 
         historyCount={history.length} 
-        onLogout={() => { setUser(null); setPage("landing"); }}
+        onLogout={handleLogout}
       />
     </div>
   );
