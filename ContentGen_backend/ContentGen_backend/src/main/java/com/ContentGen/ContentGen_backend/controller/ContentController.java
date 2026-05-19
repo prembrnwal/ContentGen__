@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +28,7 @@ public class ContentController {
             @Valid @RequestBody ContentGenerateRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         
-        String userId = (jwt != null) ? jwt.getSubject() : (request.getUserId() != null ? request.getUserId() : "test-user-id");
+        String userId = (jwt != null) ? jwt.getSubject() : (request.getUserId() != null ? request.getUserId() : "anonymous");
         request.setUserId(userId);
         
         System.out.println("[CONTROLLER] Received /generate request for user: " + userId);
@@ -45,7 +46,11 @@ public class ContentController {
 
     @GetMapping("/history")
     public ResponseEntity<List<ContentResponse>> getHistory(@AuthenticationPrincipal Jwt jwt) {
-        String userId = (jwt != null) ? jwt.getSubject() : "test-user-id";
+        if (jwt == null) {
+            // No valid JWT — return empty history instead of a shared "test-user-id" bucket
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+        String userId = jwt.getSubject();
         return ResponseEntity.ok(contentService.getHistory(userId));
     }
 

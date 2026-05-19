@@ -205,7 +205,7 @@ public class ContentServiceImpl implements ContentService {
     public List<ContentResponse> getHistory(String userId) {
         log.info("Fetching history for user: {}", userId);
         
-        if (userId != null && !userId.equals("test-user-id") && !userRepository.existsById(userId)) {
+        if (userId != null && !userId.equals("test-user-id") && !userId.equals("anonymous") && !userRepository.existsById(userId)) {
              User newUser = User.builder()
                         .id(userId)
                         .username("user-" + userId.substring(0, 8))
@@ -372,6 +372,7 @@ public class ContentServiceImpl implements ContentService {
     private ContentResponse mapToResponse(Content content) {
         ContentResponse res = ContentResponse.builder()
                 .id(content.getId())
+                .userId(content.getUserId())
                 .title(content.getTitle())
                 .introduction(content.getIntroduction())
                 // Force eager materialization and Convert Entity lists back to String lists for DTO

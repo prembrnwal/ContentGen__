@@ -33,23 +33,30 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /*
     @Bean
     public JwtDecoder jwtDecoder() {
         return token -> {
             try {
                 com.nimbusds.jwt.JWT parsedJwt = com.nimbusds.jwt.JWTParser.parse(token);
                 java.util.Map<String, Object> claims = parsedJwt.getJWTClaimsSet().getClaims();
+
+                // Reject expired tokens
+                java.util.Date expiry = parsedJwt.getJWTClaimsSet().getExpirationTime();
+                if (expiry != null && expiry.before(new java.util.Date())) {
+                    throw new org.springframework.security.oauth2.jwt.JwtException("Token expired");
+                }
+
                 return org.springframework.security.oauth2.jwt.Jwt.withTokenValue(token)
                         .headers(h -> h.putAll(parsedJwt.getHeader().toJSONObject()))
                         .claims(c -> c.putAll(claims))
                         .build();
+            } catch (org.springframework.security.oauth2.jwt.JwtException e) {
+                throw e;
             } catch (Exception e) {
                 throw new org.springframework.security.oauth2.jwt.JwtException("Failed to decode token", e);
             }
         };
     }
-    */
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

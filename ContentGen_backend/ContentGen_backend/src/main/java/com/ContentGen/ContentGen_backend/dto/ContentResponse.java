@@ -39,6 +39,7 @@ public class ContentResponse {
     private String ending;
 
     // Additional fields mapped for FE
+    private String userId;
     private String topic;
     private String template;
     private String platform;
