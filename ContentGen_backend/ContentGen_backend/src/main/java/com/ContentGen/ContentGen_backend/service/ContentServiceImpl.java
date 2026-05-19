@@ -56,15 +56,22 @@ public class ContentServiceImpl implements ContentService {
     // Cache MISS → Gemini called, DB saved, result stored in Redis for 1 hr.
     // Key = userId:topic:template:tone:platform:audience:numberOfIdeas
     // -----------------------------------------------------------------------
-    @Cacheable(
-        value = "content-generate",
-        key   = "(#request.userId != null ? #request.userId : 'anon')"
-              + " + ':' + #request.topic"
-              + " + ':' + #request.template"
-              + " + ':' + #request.tone"
-              + " + ':' + #request.platform"
-              + " + ':' + #request.audience"
-              + " + ':' + (#request.numberOfIdeas != null ? #request.numberOfIdeas : 1)"
+    @Caching(
+        cacheable = {
+            @Cacheable(
+                value = "content-generate",
+                key   = "(#request.userId != null ? #request.userId : 'anon')"
+                      + " + ':' + #request.topic"
+                      + " + ':' + #request.template"
+                      + " + ':' + #request.tone"
+                      + " + ':' + #request.platform"
+                      + " + ':' + #request.audience"
+                      + " + ':' + (#request.numberOfIdeas != null ? #request.numberOfIdeas : 1)"
+            )
+        },
+        evict = {
+            @CacheEvict(value = "content-history", key = "#request.userId != null ? #request.userId : 'anon'")
+        }
     )
     @Override
     public List<ContentResponse> generateContent(ContentGenerateRequest request) {

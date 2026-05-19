@@ -27,8 +27,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .anyRequest().permitAll()
             )
-            // Disabled JWT scanning temporarily!
-            // .oauth2ResourceServer(oauth2 -> oauth2.jwt(org.springframework.security.config.Customizer.withDefaults()))
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(org.springframework.security.config.Customizer.withDefaults()))
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
             
         return http.build();
