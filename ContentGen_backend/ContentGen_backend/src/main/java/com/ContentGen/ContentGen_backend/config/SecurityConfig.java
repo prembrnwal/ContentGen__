@@ -38,12 +38,19 @@ public class SecurityConfig {
         return token -> {
             try {
                 com.nimbusds.jwt.JWT parsedJwt = com.nimbusds.jwt.JWTParser.parse(token);
-                java.util.Map<String, Object> claims = parsedJwt.getJWTClaimsSet().getClaims();
+                java.util.Map<String, Object> claims = new java.util.HashMap<>(parsedJwt.getJWTClaimsSet().getClaims());
 
                 // Reject expired tokens
                 java.util.Date expiry = parsedJwt.getJWTClaimsSet().getExpirationTime();
                 if (expiry != null && expiry.before(new java.util.Date())) {
                     throw new org.springframework.security.oauth2.jwt.JwtException("Token expired");
+                }
+
+                // Convert Date claims to Instants so Spring Security's Jwt getters don't throw ClassCastException
+                for (java.util.Map.Entry<String, Object> entry : claims.entrySet()) {
+                    if (entry.getValue() instanceof java.util.Date) {
+                        claims.put(entry.getKey(), ((java.util.Date) entry.getValue()).toInstant());
+                    }
                 }
 
                 return org.springframework.security.oauth2.jwt.Jwt.withTokenValue(token)
