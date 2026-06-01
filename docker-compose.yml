@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # 1. Redis Cache Service
+  redis:
+    image: redis:7-alpine
+    container_name: contentgen-redis
+    ports:
+      - "6379:6379"
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  # 2. PostgreSQL Local Database Service (Optional: fallback if not using remote Supabase)
+  postgres:
+    image: postgres:15-alpine
+    container_name: contentgen-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: contentgen
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local_password_123
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 3. Spring Boot Backend Service
+  backend:
+    build:
+      context: ./ContentGen_backend/ContentGen_backend
+      dockerfile: Dockerfile
+    container_name: contentgen-backend
+    ports:
+      - "8082:8082"
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      # Connect to the Redis container using service name
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      
+      # Database configuration (Switch to Supabase URL if you want remote DB)
+      DB_URL: jdbc:postgresql://postgres:5432/contentgen
+      DB_USERNAME: postgres
+      DB_PASSWORD: local_password_123
+      
+      # Gemini API configuration
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    restart: always
+
+  # 4. React Frontend Service
+  frontend:
+    build:
+      context: ./ContentGen_front
+      dockerfile: Dockerfile
+      args:
+        # Build-time env variables for React bundling
+        REACT_APP_API_URL: http://localhost:8082/api
+        REACT_APP_SUPABASE_URL: https://fnlqwxouzymlntraktjs.supabase.co
+        REACT_APP_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZubHF3eG91enltbG50cmFrdGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5ODM5ODIsImV4cCI6MjA5MTU1OTk4Mn0.c9V4otUZwASYNO36J7OhRDi1nld81p_lJTyrnOHmF2U
+    container_name: contentgen-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  redis_data:
+  postgres_data:
