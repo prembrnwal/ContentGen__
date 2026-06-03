@@ -62,6 +62,29 @@ export default function LoginPage({ setPage, setUser }) {
     }
   }
 
+  async function handleGoogleLogin() {
+    setErr("");
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/dashboard',
+        }
+      });
+      if (error) throw error;
+    } catch (error) {
+      setErr(error.message);
+      setLoading(false);
+    }
+  }
+
+  function handleBypassLogin() {
+    localStorage.setItem('dev_bypass', 'true');
+    setUser("dev_user");
+    setPage("app");
+  }
+
   return (
     <div className="min-h-screen w-full flex bg-darkBg text-white overflow-hidden font-sans">
       {/* Left Panel - Hero Section */}
@@ -249,7 +272,9 @@ export default function LoginPage({ setPage, setUser }) {
               <div className="mb-6 space-y-3">
                 <button 
                   type="button" 
-                  className="w-full bg-white text-gray-900 font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                  className="w-full bg-white text-gray-900 font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
                 >
                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -341,6 +366,16 @@ export default function LoginPage({ setPage, setUser }) {
                 {loading ? "Authenticating..." : mode === "login" ? "Sign In" : "Create Account"}
               </button>
             </form>
+
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={handleBypassLogin}
+                className="w-full mt-4 py-3 rounded-xl border border-dashed border-primaryAccent/40 bg-primaryAccent/5 text-primaryAccent font-bold hover:bg-primaryAccent/10 hover:border-primaryAccent/60 transition-all flex items-center justify-center gap-2"
+              >
+                Bypass Login (Dev Mode)
+              </button>
+            )}
 
             <div className="text-center mt-6">
               <p className="text-sm text-textMuted">
